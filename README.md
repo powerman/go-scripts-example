@@ -14,8 +14,9 @@ copy the parts you need and adapt them.
 
 The scripts here are real tasks of this repository:
 [toc](scripts/toc/) maintains the table of contents below,
-and [lint:links](scripts/lint-links/) checks links in markdown files on CI,
-on Linux, macOS and Windows.
+[lint:links](scripts/lint-links/) checks links in markdown files on CI,
+on Linux, macOS and Windows,
+and [test-qemu](scripts/test-qemu/) tests scripts in docker on platforms emulated by QEMU.
 
 <!-- toc -->
 
@@ -84,8 +85,10 @@ so a Go script is as convenient to run as a shell script.
 
 ## What this example shows
 
-- Two scripts, [toc](scripts/toc/) and [lint:links](scripts/lint-links/),
+- Two scripts which process files, [toc](scripts/toc/) and [lint:links](scripts/lint-links/),
   with code shared in [scripts/internal/markdown](scripts/internal/markdown/).
+- A script which orchestrates external commands, [test-qemu](scripts/test-qemu/):
+  it has little logic and a `World` which runs docker.
 - Scripts as mise tasks: a fast rebuild on demand, completion of flags and arguments,
   tasks to build, generate, format, lint, test and cover scripts.
 - A layout of a script which makes it testable:
@@ -96,11 +99,14 @@ so a Go script is as convenient to run as a shell script.
   and [kongusage](https://github.com/powerman/kongusage) for its completion in mise.
 - [bitfield/script](https://github.com/bitfield/script) to run commands,
   so an adapter looks almost like a shell command:
-  [toc](scripts/toc/internal/world.go), [lint:links](scripts/lint-links/internal/world.go).
+  [toc](scripts/toc/internal/world.go), [lint:links](scripts/lint-links/internal/world.go),
+  [test-qemu](scripts/test-qemu/internal/world.go).
 - Scripts used by tasks of the project ([fmt and lint](mise.toml)) and run on CI.
 - Scripts run on [CI](.github/workflows/test.yml) on Linux, macOS and Windows:
   by mise on Linux and Windows,
   and by Go alone on other native platforms and on Linux platforms emulated by QEMU.
+  On QEMU platforms they also run by task test-qemu,
+  which does the same as the shell step of CI, but can be run locally too.
 
 ## Layout
 
@@ -116,6 +122,7 @@ so a Go script is as convenient to run as a shell script.
     ├── internal/
     │   └── markdown/           Code shared by scripts.
     ├── lint-links/             Program of task lint:links.
+    ├── test-qemu/              Program of task test-qemu.
     └── toc/                    Program of task toc.
         ├── main.go             Parses the CLI and runs it.
         └── internal/
@@ -141,6 +148,7 @@ mise install
 mise run toc --help
 mise run toc --check README.md
 mise run lint:links
+mise run test-qemu linux/arm/v7 linux/riscv64
 ```
 
 Arguments are passed to the script as is, `--help` and invalid flags included.
