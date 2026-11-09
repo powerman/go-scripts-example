@@ -151,12 +151,11 @@ but it may be outdated: run `mise run scripts:build` first.
 ### Develop scripts
 
 ```sh
-mise run                  # Format, lint and test everything.
-mise run generate         # Generate mocks and fakes.
-mise run scripts:test     # Test scripts.
-mise run scripts:fix      # Apply automatic fixes of go fix and golangci-lint.
-mise run scripts:cover    # Show test coverage of scripts.
-mise tasks --hidden       # List all tasks.
+mise run               # Format, lint and test everything.
+mise run generate      # Generate mocks and fakes.
+mise run scripts:test  # Test scripts.
+mise run scripts:fix   # Apply automatic fixes of go fix and golangci-lint.
+mise run scripts:cover # Show test coverage of scripts.
 ```
 
 ## How it works
@@ -217,8 +216,6 @@ run_windows = '.cache\bin\toc'
   only when files of `scripts/` change (by `sources` and `outputs`),
   so a start of a task takes a few milliseconds.
   `go run` isn't used: its own check of changes takes much longer.
-- Another task which runs a program does the same (e.g. `fmt:toc` and `lint:links`):
-  `mise run` or `{ task = … }` would add tens of milliseconds to each start.
 - `raw_args = true` makes mise pass arguments as is instead of parsing them by the spec,
   so `--help` and invalid flags reach Kong.
   mise removes `--` after the task name,
@@ -250,15 +247,15 @@ and `scripts:lint:usage` lints specs of all programs.
 A script follows a flat variant of hexagonal architecture,
 with layers kept in separate files:
 
-- [port.go](scripts/toc/internal/port.go) declares `App` (what the script does),
+- [port.go](scripts/toc/internal/port.go) declares interfaces `App` (what the script does),
   `World` (external commands and files the logic needs), errors and types.
 - [app.go](scripts/toc/internal/app.go) implements `App` using `World`.
   It's the only place with logic, and it doesn't touch the OS.
-- [cmd.go](scripts/toc/internal/cmd.go) is a Kong CLI which converts flags to a call of `App`.
-  The Kong struct is the only spec of the CLI.
-- [wire.go](scripts/toc/internal/wire.go) creates `App` with real `World` and stdout.
 - [world.go](scripts/toc/internal/world.go) implements `World` by real commands:
   thin adapters without logic.
+- [wire.go](scripts/toc/internal/wire.go) creates `App` with real `World` and stdout.
+- [cmd.go](scripts/toc/internal/cmd.go) is a Kong CLI which converts flags to a call of `App`.
+  The Kong struct is the only spec of the CLI.
 - [main.go](scripts/toc/main.go) parses the CLI and runs it.
   `Run` returns errors, and `ctx.FatalIfErrorf` exits with the exit status of a failed command,
   so the status reaches mise.

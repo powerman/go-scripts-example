@@ -36,7 +36,7 @@ yamlfmt = 'latest'
 # Static checker for GitHub Actions workflow files.
 actionlint = 'latest'
 # Fast linters runner for Go.
-golangci-lint = '2.15' # Version must match scripts/.golangci.yml.
+golangci-lint = '2.15' # Version must match .golangci.yml.
 
 #--- Test
 # 'go test' runner with output optimized for humans.
