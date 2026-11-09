@@ -213,18 +213,14 @@ func comment(n *ast.HTMLBlock, src []byte) (Comment, bool) {
 	if n.HTMLBlockType != ast.HTMLBlockType2 || n.Lines().Len() == 0 {
 		return Comment{}, false
 	}
-	var buf bytes.Buffer
 	lines := n.Lines()
-	for i := range lines.Len() {
-		line := lines.At(i)
-		buf.Write(line.Value(src))
-	}
+	s := string(lines.Value(src))
 	last := lines.At(lines.Len() - 1)
 	if n.HasClosure() {
 		last = n.ClosureLine
-		buf.Write(last.Value(src))
+		s += string(last.Value(src))
 	}
-	s := strings.TrimSpace(buf.String())
+	s = strings.TrimSpace(s)
 	if !strings.HasPrefix(s, "<!--") || !strings.HasSuffix(s, "-->") {
 		return Comment{}, false
 	}
@@ -235,23 +231,10 @@ func comment(n *ast.HTMLBlock, src []byte) (Comment, bool) {
 	}, true
 }
 
-// offsetOf returns a byte offset of the source of n or of its nearest block.
+// offsetOf returns a byte offset of the source of n.
+// Goldmark sets positions of all nodes of a parsed document, so -1 isn't expected.
 func offsetOf(n ast.Node) int {
-	var offset int
-	found := false
-	_ = ast.Walk(n, func(c ast.Node, entering bool) (ast.WalkStatus, error) {
-		if t, ok := c.(*ast.Text); entering && ok {
-			offset, found = t.Segment.Start, true
-			return ast.WalkStop, nil
-		}
-		return ast.WalkContinue, nil
-	})
-	for ; !found && n != nil; n = n.Parent() {
-		if n.Type() == ast.TypeBlock && n.Lines().Len() > 0 {
-			offset, found = n.Lines().At(0).Start, true
-		}
-	}
-	return offset
+	return max(n.Pos(), 0)
 }
 
 func lineOf(src []byte, offset int) int {

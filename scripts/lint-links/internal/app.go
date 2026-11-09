@@ -6,7 +6,6 @@ import (
 	urlpkg "net/url"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/powerman/go-scripts-example/scripts/internal/markdown"
@@ -100,20 +99,18 @@ func (a *app) parse(name string) (*markdown.Doc, error) {
 	return doc, nil
 }
 
-var reScheme = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*:`)
-
 // checkLink returns a description of a problem with the link dest in the file from,
 // or an empty string if the link is fine.
 func (a *app) checkLink(from, dest string) (string, error) {
-	if reScheme.MatchString(dest) || strings.HasPrefix(dest, "//") {
+	u, err := urlpkg.Parse(dest)
+	switch {
+	case err != nil:
+		return fmt.Sprintf("invalid link %q", dest), nil //nolint:nilerr // A problem of the file.
+	case u.Scheme != "" || u.Host != "":
 		return "", nil // External links are out of scope.
 	}
 
-	target, fragment, ok := splitDest(dest)
-	if !ok {
-		return fmt.Sprintf("invalid link %q", dest), nil
-	}
-
+	target, fragment := u.Path, u.Fragment
 	switch {
 	case target == "":
 		target = from
@@ -133,18 +130,9 @@ func (a *app) checkLink(from, dest string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	_, ok = doc.HeadingByID(fragment)
+	_, ok := doc.HeadingByID(fragment)
 	if !ok {
 		return fmt.Sprintf("link %q: no heading #%s in %s", dest, fragment, target), nil
 	}
 	return "", nil
-}
-
-// splitDest returns unescaped path and fragment of a local link.
-func splitDest(dest string) (target, fragment string, ok bool) {
-	target, fragment, _ = strings.Cut(dest, "#")
-	target, _, _ = strings.Cut(target, "?")
-	target, errTarget := urlpkg.PathUnescape(target)
-	fragment, errFragment := urlpkg.PathUnescape(fragment)
-	return target, fragment, errTarget == nil && errFragment == nil
 }

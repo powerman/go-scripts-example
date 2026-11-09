@@ -43,23 +43,23 @@ func NewFakeWorldFrom(i internal.World) *FakeWorld {
 // FakeWorldGitLsFilesFunc describes the behavior when the GitLsFiles method
 // of the parent FakeWorld instance is invoked.
 type FakeWorldGitLsFilesFunc struct {
-	defaultHook func(...string) ([]string, error)
-	hooks       []func(...string) ([]string, error)
+	defaultHook func() ([]string, error)
+	hooks       []func() ([]string, error)
 	history     []FakeWorldGitLsFilesFuncCall
 	mutex       sync.Mutex
 }
 
 // GitLsFiles delegates to the next hook function in the queue
 // and stores the parameter and result values of this invocation.
-func (m *FakeWorld) GitLsFiles(v0 ...string) ([]string, error) {
-	r0, r1 := m.GitLsFilesFunc.nextHook()(v0...)
-	m.GitLsFilesFunc.appendCall(FakeWorldGitLsFilesFuncCall{v0, r0, r1})
+func (m *FakeWorld) GitLsFiles() ([]string, error) {
+	r0, r1 := m.GitLsFilesFunc.nextHook()()
+	m.GitLsFilesFunc.appendCall(FakeWorldGitLsFilesFuncCall{r0, r1})
 	return r0, r1
 }
 
 // SetDefaultHook sets function that is called when the GitLsFiles method
 // of the parent FakeWorld instance is invoked and the hook queue is empty.
-func (f *FakeWorldGitLsFilesFunc) SetDefaultHook(hook func(...string) ([]string, error)) {
+func (f *FakeWorldGitLsFilesFunc) SetDefaultHook(hook func() ([]string, error)) {
 	f.defaultHook = hook
 }
 
@@ -67,7 +67,7 @@ func (f *FakeWorldGitLsFilesFunc) SetDefaultHook(hook func(...string) ([]string,
 // Each invocation of the GitLsFiles method of the parent FakeWorld instance
 // invokes the hook at the front of the queue and discards it.
 // After the queue is empty, the default hook function is invoked for any future action.
-func (f *FakeWorldGitLsFilesFunc) PushHook(hook func(...string) ([]string, error)) {
+func (f *FakeWorldGitLsFilesFunc) PushHook(hook func() ([]string, error)) {
 	f.mutex.Lock()
 	f.hooks = append(f.hooks, hook)
 	f.mutex.Unlock()
@@ -75,19 +75,19 @@ func (f *FakeWorldGitLsFilesFunc) PushHook(hook func(...string) ([]string, error
 
 // SetDefaultReturn calls SetDefaultHook with a function that returns the given values.
 func (f *FakeWorldGitLsFilesFunc) SetDefaultReturn(r0 []string, r1 error) {
-	f.SetDefaultHook(func(...string) ([]string, error) {
+	f.SetDefaultHook(func() ([]string, error) {
 		return r0, r1
 	})
 }
 
 // PushReturn calls PushHook with a function that returns the given values.
 func (f *FakeWorldGitLsFilesFunc) PushReturn(r0 []string, r1 error) {
-	f.PushHook(func(...string) ([]string, error) {
+	f.PushHook(func() ([]string, error) {
 		return r0, r1
 	})
 }
 
-func (f *FakeWorldGitLsFilesFunc) nextHook() func(...string) ([]string, error) {
+func (f *FakeWorldGitLsFilesFunc) nextHook() func() ([]string, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
@@ -123,9 +123,6 @@ func (f *FakeWorldGitLsFilesFunc) History() []FakeWorldGitLsFilesFuncCall {
 // FakeWorldGitLsFilesFuncCall is an object that describes an invocation
 // of method GitLsFiles on an instance of FakeWorld.
 type FakeWorldGitLsFilesFuncCall struct {
-	// Pathspecs is a slice containing the values of the variadic arguments
-	// passed to this method invocation.
-	Pathspecs []string
 	// Strings is the value of the 1st result
 	// returned from this method invocation.
 	Strings []string
@@ -135,16 +132,8 @@ type FakeWorldGitLsFilesFuncCall struct {
 }
 
 // Args returns an interface slice containing the arguments of this invocation.
-// The variadic slice argument is flattened in this array such that
-// one positional argument and three variadic arguments
-// would result in a slice of four, not two.
 func (c FakeWorldGitLsFilesFuncCall) Args() []any {
-	trailing := []any{}
-	for _, val := range c.Pathspecs {
-		trailing = append(trailing, val)
-	}
-
-	return append([]any{}, trailing...)
+	return []any{}
 }
 
 // Results returns an interface slice containing the results of this invocation.

@@ -129,9 +129,9 @@ func (f *FakeWorldGitGrepFilesFunc) History() []FakeWorldGitGrepFilesFuncCall {
 // FakeWorldGitGrepFilesFuncCall is an object that describes an invocation
 // of method GitGrepFiles on an instance of FakeWorld.
 type FakeWorldGitGrepFilesFuncCall struct {
-	// Line is the value of the 1st argument
+	// Regexp is the value of the 1st argument
 	// passed to this method invocation.
-	Line string
+	Regexp string
 	// Pathspecs is a slice containing the values of the variadic arguments
 	// passed to this method invocation.
 	Pathspecs []string
@@ -153,7 +153,7 @@ func (c FakeWorldGitGrepFilesFuncCall) Args() []any {
 		trailing = append(trailing, val)
 	}
 
-	return append([]any{c.Line}, trailing...)
+	return append([]any{c.Regexp}, trailing...)
 }
 
 // Results returns an interface slice containing the results of this invocation.

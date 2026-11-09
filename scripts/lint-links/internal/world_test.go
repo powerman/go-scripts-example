@@ -30,8 +30,4 @@ func TestRealWorld(tt *testing.T) {
 	files, err := w.GitLsFiles()
 	t.Nil(err)
 	t.DeepEqual(files, []string{".gitignore", "sub dir/ünï/b c.md"})
-
-	files, err = w.GitLsFiles("*.none")
-	t.Nil(err)
-	t.Len(files, 0)
 }

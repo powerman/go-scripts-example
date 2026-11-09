@@ -10,13 +10,11 @@ import (
 type RealWorld struct{}
 
 // GitLsFiles implements [World].
-func (RealWorld) GitLsFiles(pathspecs ...string) ([]string, error) {
+func (RealWorld) GitLsFiles() ([]string, error) {
 	// core.quotePath=false prints non-ASCII paths as is.
-	args := append([]string{
-		"-c", "core.quotePath=false", "ls-files",
-		"--cached", "--others", "--exclude-standard", "--",
-	}, pathspecs...)
-	return script.NewPipe().WithStderr(os.Stderr).ExecCommand("git", args...).Slice()
+	return script.NewPipe().WithStderr(os.Stderr).
+		ExecCommand("git", "-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard").
+		Slice()
 }
 
 // ReadFile implements [World].

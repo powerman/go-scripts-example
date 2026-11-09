@@ -34,7 +34,7 @@ func newWorld(files map[string]string) *world {
 	return w
 }
 
-func (w *world) gitLsFiles(...string) ([]string, error) {
+func (w *world) gitLsFiles() ([]string, error) {
 	return slices.Sorted(maps.Keys(w.Files)), nil
 }
 
