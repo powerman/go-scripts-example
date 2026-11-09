@@ -32,9 +32,9 @@ func (a *app) Update(opts Options) error {
 	files := opts.Files
 	if len(files) == 0 {
 		var err error
-		files, err = a.world.GitLsFiles("*.md")
+		files, err = a.world.GitGrepFiles("^<!-- "+MarkerStart+" -->$", "*.md")
 		if err != nil {
-			return fmt.Errorf("git ls-files: %w", err)
+			return fmt.Errorf("git grep: %w", err)
 		}
 	}
 
@@ -58,7 +58,7 @@ func (a *app) updateFile(name string, opts Options) error {
 	start, ok := doc.Comment(MarkerStart)
 	switch {
 	case !ok && len(opts.Files) == 0:
-		return nil // Found by GitLsFiles, but has no table of contents.
+		return nil // Found by GitGrepFiles, but the marker isn't a comment (e.g., it's in code).
 	case !ok:
 		return ErrNoMarker
 	}
@@ -67,7 +67,7 @@ func (a *app) updateFile(name string, opts Options) error {
 		return ErrNoEndMarker
 	}
 
-	toc := render(doc.Headings, end.End, opts, newline(src))
+	toc := render(doc.Headings, end.End, opts)
 	updated := slices.Concat(src[:start.End], toc, src[end.Start:])
 	switch {
 	case bytes.Equal(updated, src):
@@ -86,9 +86,9 @@ func (a *app) updateFile(name string, opts Options) error {
 
 // render returns a table of contents with a blank line before and after it.
 // It includes headings after the given offset.
-func render(headings []markdown.Heading, after int, opts Options, nl string) []byte {
+func render(headings []markdown.Heading, after int, opts Options) []byte {
 	var buf bytes.Buffer
-	buf.WriteString(nl)
+	buf.WriteString("\n")
 	depth := -1
 	for _, h := range headings {
 		if h.Offset < after || h.Level < opts.MinLevel || h.Level > opts.MaxLevel {
@@ -96,19 +96,10 @@ func render(headings []markdown.Heading, after int, opts Options, nl string) []b
 		}
 		// A list item can't be nested deeper than one level below the previous one.
 		depth = min(h.Level-opts.MinLevel, depth+1)
-		fmt.Fprintf(&buf, "%s- [%s](#%s)%s", strings.Repeat("  ", depth), h.Label, h.ID, nl)
+		fmt.Fprintf(&buf, "%s- [%s](#%s)\n", strings.Repeat("  ", depth), h.Label, h.ID)
 	}
 	if depth >= 0 {
-		buf.WriteString(nl)
+		buf.WriteString("\n")
 	}
 	return buf.Bytes()
-}
-
-// newline returns line ending used by src.
-// Git on Windows may convert line endings of checked out files to CRLF.
-func newline(src []byte) string {
-	if bytes.Contains(src, []byte("\r\n")) {
-		return "\r\n"
-	}
-	return "\n"
 }

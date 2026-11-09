@@ -26,15 +26,15 @@ jobs:
       - uses: jdx/mise-action@v5
       - run: git reset --hard # Work around https://github.com/jdx/mise/discussions/8270.
 
+      - uses: powerman/.github/.github/actions/cache-go-and-tools@main
+
       - run: mise run ci
 
-  # Go scripts work on any OS, while some tools of mise.toml may be unavailable there,
+  # mise runs tasks on Windows by cmd, so tasks which run scripts have own commands there.
+  # Some tools of mise.toml may be unavailable on Windows,
   # so only tools needed to build and test Go scripts are installed.
-  scripts:
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  windows:
+    runs-on: windows-latest
     timeout-minutes: 10
     env:
       MISE_AUTO_INSTALL: false # Do not install other tools of mise.toml on `mise run`.
@@ -47,13 +47,104 @@ jobs:
           install_args: go gotestsum usage
       - run: git reset --hard # Work around https://github.com/jdx/mise/discussions/8270.
 
+      - uses: powerman/.github/.github/actions/cache-go-and-tools@main
+
       - run: mise run scripts:test
       - run: mise run toc --check
       - run: mise run lint:links
 
+  # Testing on available native platforms.
+  # Go scripts don't need mise: they are built and run by Go alone.
+  native:
+    strategy:
+      matrix:
+        include:
+          - {os: ubuntu-24.04-arm} # Linux ARM64
+          - {os: macos-15-intel} # macOS AMD64
+          - {os: macos-latest} # macOS ARM64
+          - {os: windows-latest} # Windows AMD64
+          - {os: windows-11-arm} # Windows ARM64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      KONGUSAGE_TEST_SKIP_USAGE: 1 # Tool usage of mise.toml is not installed here.
+    defaults:
+      run:
+        shell: bash
+        working-directory: scripts
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: 'scripts/go.mod'
+          cache-dependency-path: 'scripts/go.sum'
+
+      - run: go test -timeout=60s -race ./...
+        if: matrix.os != 'windows-11-arm'
+      - run: go test -timeout=60s ./...
+        if: matrix.os == 'windows-11-arm'
+
+      - run: go build -o ../.cache/bin/ ./...
+      - run: .cache/bin/toc --check
+        working-directory: .
+      - run: .cache/bin/lint-links
+        working-directory: .
+
+  # Testing on available docker QEMU platforms (Linux only).
+  qemu:
+    strategy:
+      matrix:
+        include:
+          - {arch: arm, v: v7}
+          - {arch: ppc64le}
+          - {arch: s390x}
+          - {arch: riscv64}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: ${{ matrix.arch }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - uses: powerman/.github/.github/actions/cache-go-and-tools@main
+        with:
+          key: qemu-${{ matrix.arch }}${{ matrix.v && format('-{0}', matrix.v) || '' }}
+
+      - name: Run tests
+        env:
+          PLATFORM: linux/${{ matrix.arch }}${{ matrix.v && format('/{0}', matrix.v) || '' }}
+        run: |
+          mkdir -p ~/go ~/.cache/go-build
+          V=$(awk '$1=="toolchain"{v=$2}$1=="go"&&!v{v=$2}END{sub(/^go/,"",v);print v}' scripts/go.mod)
+          docker run -i --rm --platform "$PLATFORM" \
+            -w /workspace \
+            -v "$PWD:/workspace" \
+            -v "$HOME/.cache/go-build:/root/.cache/go-build" \
+            -v "$HOME/go:/go" \
+            -e KONGUSAGE_TEST_SKIP_USAGE=1 \
+            "golang:${V}-alpine" sh -e -c '
+              apk add --no-cache git >/dev/null
+              git config --global --add safe.directory /workspace
+              cd scripts
+              go test -timeout=60s ./...
+              go build -o ../.cache/bin/ ./...
+              cd ..
+              .cache/bin/toc --check
+              .cache/bin/lint-links
+            '
+
   # Aggregate job for branch protection.
   test:
-    needs: [main, scripts]
+    needs: [main, windows, native, qemu]
     runs-on: ubuntu-latest
     if: always()
     steps:

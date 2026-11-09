@@ -27,7 +27,12 @@ for f in .cache/bin/*; do
     [ -d "scripts/${f#.cache/bin/}" ] || rm -f "$f"
 done
 '''
-run_windows = '''powershell -NoProfile -c "Get-ChildItem .cache/bin -File -ErrorAction Ignore | Where-Object { -not (Test-Path -PathType Container scripts/$($_.BaseName)) } | Remove-Item"'''
+run_windows = """
+powershell -NoProfile -Command "\
+    Get-ChildItem .cache/bin -File -ErrorAction Ignore \
+    | Where-Object { -not (Test-Path -PathType Container scripts/$($_.BaseName)) } \
+    | Remove-Item"\
+"""
 
 ['scripts:generate']
 description = 'Generate Go code of Go scripts'

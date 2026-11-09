@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"maps"
 	"path"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -31,18 +32,20 @@ type world struct {
 func newWorld(files map[string]string) *world {
 	w := &world{FakeWorld: NewFakeWorld(), Files: make(map[string]string)}
 	maps.Copy(w.Files, files)
-	w.GitLsFilesFunc.SetDefaultHook(w.gitLsFiles)
+	w.GitGrepFilesFunc.SetDefaultHook(w.gitGrepFiles)
 	w.ReadFileFunc.SetDefaultHook(w.readFile)
 	w.WriteFileFunc.SetDefaultHook(w.writeFile)
 	return w
 }
 
-func (w *world) gitLsFiles(pathspecs ...string) ([]string, error) {
+func (w *world) gitGrepFiles(pattern string, pathspecs ...string) ([]string, error) {
+	re := regexp.MustCompile("(?m)" + pattern)
 	var names []string
-	for name := range w.Files {
+	for name, data := range w.Files {
 		for _, pathspec := range pathspecs {
 			// Git pathspec "*.md" matches files in subdirectories too.
-			if ok, _ := path.Match(pathspec, path.Base(name)); ok {
+			ok, _ := path.Match(pathspec, path.Base(name))
+			if ok && re.MatchString(data) {
 				names = append(names, name)
 			}
 		}
@@ -177,11 +180,10 @@ func TestApp_Update(tt *testing.T) {
 			wantOut:   "updated a.md\n",
 		},
 		{
-			name:      "CRLF",
-			files:     map[string]string{"a.md": strings.ReplaceAll(readme, "\n", "\r\n")},
+			name:      "MarkerInCode",
+			files:     map[string]string{"a.md": md("```", "<!-- toc -->", "<!-- tocstop -->", "```")},
 			opts:      opts,
-			wantFiles: map[string]string{"a.md": strings.ReplaceAll(readmeTOC, "\n", "\r\n")},
-			wantOut:   "updated a.md\n",
+			wantFiles: map[string]string{"a.md": md("```", "<!-- toc -->", "<!-- tocstop -->", "```")},
 		},
 		{
 			name:      "NoMarker",
@@ -229,11 +231,11 @@ func TestApp_Update(tt *testing.T) {
 func TestApp_Update_Errors(tt *testing.T) {
 	tt.Parallel()
 
-	tt.Run("GitLsFiles", func(tt *testing.T) {
+	tt.Run("GitGrepFiles", func(tt *testing.T) {
 		tt.Parallel()
 		t := check.T(tt).MustAll()
 		w := newWorld(nil)
-		w.GitLsFilesFunc.PushReturn(nil, errGit)
+		w.GitGrepFilesFunc.PushReturn(nil, errGit)
 
 		err := internal.NewApp(w, &bytes.Buffer{}).Update(opts)
 		t.Err(err, errGit)

@@ -12,14 +12,6 @@ type CLI struct {
 	UsageSpec kongusage.Flag
 }
 
-// UsageKDL adds examples to the usage spec.
-func (CLI) UsageKDL() string {
-	return `
-example "mise run toc" header="Update all tables of contents"
-example "mise run toc --check README.md" header="Check a table of contents in README.md"
-`
-}
-
 // Run executes the CLI.
 func (c CLI) Run(a App) error {
 	return a.Update(Options{

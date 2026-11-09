@@ -13,9 +13,9 @@ import (
 // FakeWorld is a fake implementation of the World interface
 // (from the package github.com/powerman/go-scripts-example/scripts/toc/internal) used for unit testing.
 type FakeWorld struct {
-	// GitLsFilesFunc is an instance of a fake function object
-	// controlling the behavior of the method GitLsFiles.
-	GitLsFilesFunc FakeWorldGitLsFilesFunc
+	// GitGrepFilesFunc is an instance of a fake function object
+	// controlling the behavior of the method GitGrepFiles.
+	GitGrepFilesFunc FakeWorldGitGrepFilesFunc
 	// ReadFileFunc is an instance of a fake function object
 	// controlling the behavior of the method ReadFile.
 	ReadFileFunc FakeWorldReadFileFunc
@@ -34,8 +34,8 @@ func NewFakeWorld() *FakeWorld {
 // All methods delegate to the given implementation, unless overwritten.
 func NewFakeWorldFrom(i internal.World) *FakeWorld {
 	return &FakeWorld{
-		GitLsFilesFunc: FakeWorldGitLsFilesFunc{
-			defaultHook: i.GitLsFiles,
+		GitGrepFilesFunc: FakeWorldGitGrepFilesFunc{
+			defaultHook: i.GitGrepFiles,
 		},
 		ReadFileFunc: FakeWorldReadFileFunc{
 			defaultHook: i.ReadFile,
@@ -46,60 +46,60 @@ func NewFakeWorldFrom(i internal.World) *FakeWorld {
 	}
 }
 
-// FakeWorldGitLsFilesFunc describes the behavior when the GitLsFiles method
+// FakeWorldGitGrepFilesFunc describes the behavior when the GitGrepFiles method
 // of the parent FakeWorld instance is invoked.
-type FakeWorldGitLsFilesFunc struct {
-	defaultHook func(...string) ([]string, error)
-	hooks       []func(...string) ([]string, error)
-	history     []FakeWorldGitLsFilesFuncCall
+type FakeWorldGitGrepFilesFunc struct {
+	defaultHook func(string, ...string) ([]string, error)
+	hooks       []func(string, ...string) ([]string, error)
+	history     []FakeWorldGitGrepFilesFuncCall
 	mutex       sync.Mutex
 }
 
-// GitLsFiles delegates to the next hook function in the queue
+// GitGrepFiles delegates to the next hook function in the queue
 // and stores the parameter and result values of this invocation.
-func (m *FakeWorld) GitLsFiles(v0 ...string) ([]string, error) {
-	r0, r1 := m.GitLsFilesFunc.nextHook()(v0...)
-	m.GitLsFilesFunc.appendCall(FakeWorldGitLsFilesFuncCall{v0, r0, r1})
+func (m *FakeWorld) GitGrepFiles(v0 string, v1 ...string) ([]string, error) {
+	r0, r1 := m.GitGrepFilesFunc.nextHook()(v0, v1...)
+	m.GitGrepFilesFunc.appendCall(FakeWorldGitGrepFilesFuncCall{v0, v1, r0, r1})
 	return r0, r1
 }
 
-// SetDefaultHook sets function that is called when the GitLsFiles method
+// SetDefaultHook sets function that is called when the GitGrepFiles method
 // of the parent FakeWorld instance is invoked and the hook queue is empty.
-func (f *FakeWorldGitLsFilesFunc) SetDefaultHook(hook func(...string) ([]string, error)) {
+func (f *FakeWorldGitGrepFilesFunc) SetDefaultHook(hook func(string, ...string) ([]string, error)) {
 	f.defaultHook = hook
 }
 
 // PushHook adds a function to the end of hook queue.
-// Each invocation of the GitLsFiles method of the parent FakeWorld instance
+// Each invocation of the GitGrepFiles method of the parent FakeWorld instance
 // invokes the hook at the front of the queue and discards it.
 // After the queue is empty, the default hook function is invoked for any future action.
-func (f *FakeWorldGitLsFilesFunc) PushHook(hook func(...string) ([]string, error)) {
+func (f *FakeWorldGitGrepFilesFunc) PushHook(hook func(string, ...string) ([]string, error)) {
 	f.mutex.Lock()
 	f.hooks = append(f.hooks, hook)
 	f.mutex.Unlock()
 }
 
 // SetDefaultReturn calls SetDefaultHook with a function that returns the given values.
-func (f *FakeWorldGitLsFilesFunc) SetDefaultReturn(r0 []string, r1 error) {
-	f.SetDefaultHook(func(...string) ([]string, error) {
+func (f *FakeWorldGitGrepFilesFunc) SetDefaultReturn(r0 []string, r1 error) {
+	f.SetDefaultHook(func(string, ...string) ([]string, error) {
 		return r0, r1
 	})
 }
 
 // PushReturn calls PushHook with a function that returns the given values.
-func (f *FakeWorldGitLsFilesFunc) PushReturn(r0 []string, r1 error) {
-	f.PushHook(func(...string) ([]string, error) {
+func (f *FakeWorldGitGrepFilesFunc) PushReturn(r0 []string, r1 error) {
+	f.PushHook(func(string, ...string) ([]string, error) {
 		return r0, r1
 	})
 }
 
-func (f *FakeWorldGitLsFilesFunc) nextHook() func(...string) ([]string, error) {
+func (f *FakeWorldGitGrepFilesFunc) nextHook() func(string, ...string) ([]string, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
 	if len(f.hooks) == 0 {
 		if f.defaultHook == nil {
-			panic("unexpected invocation of FakeWorld.GitLsFiles")
+			panic("unexpected invocation of FakeWorld.GitGrepFiles")
 		}
 		return f.defaultHook
 	}
@@ -109,26 +109,29 @@ func (f *FakeWorldGitLsFilesFunc) nextHook() func(...string) ([]string, error) {
 	return hook
 }
 
-func (f *FakeWorldGitLsFilesFunc) appendCall(r0 FakeWorldGitLsFilesFuncCall) {
+func (f *FakeWorldGitGrepFilesFunc) appendCall(r0 FakeWorldGitGrepFilesFuncCall) {
 	f.mutex.Lock()
 	f.history = append(f.history, r0)
 	f.mutex.Unlock()
 }
 
-// History returns a sequence of FakeWorldGitLsFilesFuncCall objects
+// History returns a sequence of FakeWorldGitGrepFilesFuncCall objects
 // describing the invocations of this function.
-func (f *FakeWorldGitLsFilesFunc) History() []FakeWorldGitLsFilesFuncCall {
+func (f *FakeWorldGitGrepFilesFunc) History() []FakeWorldGitGrepFilesFuncCall {
 	f.mutex.Lock()
-	history := make([]FakeWorldGitLsFilesFuncCall, len(f.history))
+	history := make([]FakeWorldGitGrepFilesFuncCall, len(f.history))
 	copy(history, f.history)
 	f.mutex.Unlock()
 
 	return history
 }
 
-// FakeWorldGitLsFilesFuncCall is an object that describes an invocation
-// of method GitLsFiles on an instance of FakeWorld.
-type FakeWorldGitLsFilesFuncCall struct {
+// FakeWorldGitGrepFilesFuncCall is an object that describes an invocation
+// of method GitGrepFiles on an instance of FakeWorld.
+type FakeWorldGitGrepFilesFuncCall struct {
+	// Line is the value of the 1st argument
+	// passed to this method invocation.
+	Line string
 	// Pathspecs is a slice containing the values of the variadic arguments
 	// passed to this method invocation.
 	Pathspecs []string
@@ -144,17 +147,17 @@ type FakeWorldGitLsFilesFuncCall struct {
 // The variadic slice argument is flattened in this array such that
 // one positional argument and three variadic arguments
 // would result in a slice of four, not two.
-func (c FakeWorldGitLsFilesFuncCall) Args() []any {
+func (c FakeWorldGitGrepFilesFuncCall) Args() []any {
 	trailing := []any{}
 	for _, val := range c.Pathspecs {
 		trailing = append(trailing, val)
 	}
 
-	return append([]any{}, trailing...)
+	return append([]any{c.Line}, trailing...)
 }
 
 // Results returns an interface slice containing the results of this invocation.
-func (c FakeWorldGitLsFilesFuncCall) Results() []any {
+func (c FakeWorldGitGrepFilesFuncCall) Results() []any {
 	return []any{c.Strings, c.Err}
 }
 

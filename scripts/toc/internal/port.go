@@ -27,9 +27,10 @@ type App interface {
 
 // World abstracts commands and files for testability.
 type World interface {
-	// GitLsFiles returns paths of tracked and untracked (but not ignored) files
-	// which match pathspecs, relative to the current directory and separated by '/'.
-	GitLsFiles(pathspecs ...string) ([]string, error)
+	// GitGrepFiles returns paths of tracked and untracked (but not ignored) files
+	// which match pathspecs and contain a line matching the extended regexp,
+	// relative to the current directory and separated by '/'.
+	GitGrepFiles(regexp string, pathspecs ...string) ([]string, error)
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte) error
 }

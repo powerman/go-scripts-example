@@ -4,9 +4,9 @@
 [![Go version](https://img.shields.io/github/go-mod/go-version/powerman/go-scripts-example?filename=scripts%2Fgo.mod&color=blue)](https://go.dev/)
 [![Test](https://img.shields.io/github/actions/workflow/status/powerman/go-scripts-example/test.yml?label=test)](https://github.com/powerman/go-scripts-example/actions/workflows/test.yml)
 
-![Linux | amd64](https://img.shields.io/badge/Linux-amd64-royalblue)
-![macOS | arm64](https://img.shields.io/badge/macOS-arm64-royalblue)
-![Windows | amd64](https://img.shields.io/badge/Windows-amd64-royalblue)
+![Linux | amd64 arm64 armv7 ppc64le s390x riscv64](https://img.shields.io/badge/Linux-amd64%20arm64%20armv7%20ppc64le%20s390x%20riscv64-royalblue)
+![macOS | amd64 arm64](https://img.shields.io/badge/macOS-amd64%20arm64-royalblue)
+![Windows | amd64 arm64](https://img.shields.io/badge/Windows-amd64%20arm64-royalblue)
 
 An example of scripts of a project written in Go and run as [mise](https://mise.jdx.dev/) tasks.
 It's meant for projects in any language, not only in Go:
@@ -94,11 +94,12 @@ so a Go script is as convenient to run as a shell script.
   a Mock of `App` for tests of the CLI.
 - [Kong](https://github.com/alecthomas/kong) for the CLI
   and [kongusage](https://github.com/powerman/kongusage) for its completion in mise.
-- [bitfield/script](https://github.com/bitfield/script) to run commands and read files,
-  so an adapter looks almost like a shell pipe.
+- [bitfield/script](https://github.com/bitfield/script) to run commands,
+  so an adapter looks almost like a shell command.
 - Scripts used by tasks of the project ([fmt and lint](mise.toml)) and run on CI.
-- Scripts run by mise on [CI](.github/workflows/test.yml) on Linux, macOS and Windows,
-  with only tools needed for scripts installed on macOS and Windows.
+- Scripts run on [CI](.github/workflows/test.yml) on Linux, macOS and Windows:
+  by mise on Linux and Windows,
+  and by Go alone on other native platforms and on Linux platforms emulated by QEMU.
 
 ## Layout
 
@@ -299,7 +300,9 @@ With bitfield/script:
 - run a command built from values by `ExecCommand(name, args...)`,
   a literal shell command line by `Shell`, never by `Exec` (inconsistent quoting);
 - never discard the error of the last stage of a pipe;
-- it can't set a working directory of a command, so use options like `git -C <dir>`.
+- it can't set a working directory of a command, so use options like `git -C <dir>`;
+- a command which exits with status 1 when nothing is found (like `git grep`)
+  needs a check of `ExitStatus()`, like `|| [ $? -eq 1 ]` in shell.
 
 ## Windows
 
@@ -316,10 +319,13 @@ Go scripts work on Windows, but mise tasks around them need care:
   and sets `MISE_AUTO_INSTALL=false`, so `mise run` doesn't try to install others.
 - Git returns paths with `/`, while arguments may use `\`:
   [lint:links](scripts/lint-links/internal/app.go) converts them by `filepath.ToSlash`.
-- Git on Windows may check out files with CRLF:
-  [toc](scripts/toc/internal/app.go) keeps line endings of a file.
 
 ## Add Go scripts to your project
+
+The approach is also described as [agent skills](https://github.com/powerman/skills):
+with `project-scripts` and `mise-toml-style` installed
+(and `go-bounded-context-hexagonal` with `go-engineering-policy` for the Go code),
+an AI agent can add Go scripts to your project and keep them in this style.
 
 ### A project not in Go
 

@@ -2,7 +2,6 @@ package internal
 
 import (
 	"os"
-	"strings"
 
 	"github.com/bitfield/script"
 )
@@ -12,15 +11,15 @@ type RealWorld struct{}
 
 // GitLsFiles implements [World].
 func (RealWorld) GitLsFiles(pathspecs ...string) ([]string, error) {
-	args := append([]string{"ls-files", "-z", "--cached", "--others", "--exclude-standard", "--"}, pathspecs...)
-	out, err := script.NewPipe().WithStderr(os.Stderr).ExecCommand("git", args...).String()
-	if err != nil || out == "" {
-		return nil, err
-	}
-	return strings.Split(strings.TrimSuffix(out, "\x00"), "\x00"), nil
+	// core.quotePath=false prints non-ASCII paths as is.
+	args := append([]string{
+		"-c", "core.quotePath=false", "ls-files",
+		"--cached", "--others", "--exclude-standard", "--",
+	}, pathspecs...)
+	return script.NewPipe().WithStderr(os.Stderr).ExecCommand("git", args...).Slice()
 }
 
 // ReadFile implements [World].
 func (RealWorld) ReadFile(name string) ([]byte, error) {
-	return script.File(name).Bytes()
+	return os.ReadFile(name) //nolint:gosec // Reading files given by a user is the purpose.
 }
