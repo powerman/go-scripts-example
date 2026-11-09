@@ -95,7 +95,8 @@ so a Go script is as convenient to run as a shell script.
 - [Kong](https://github.com/alecthomas/kong) for the CLI
   and [kongusage](https://github.com/powerman/kongusage) for its completion in mise.
 - [bitfield/script](https://github.com/bitfield/script) to run commands,
-  so an adapter looks almost like a shell command.
+  so an adapter looks almost like a shell command:
+  [toc](scripts/toc/internal/world.go), [lint:links](scripts/lint-links/internal/world.go).
 - Scripts used by tasks of the project ([fmt and lint](mise.toml)) and run on CI.
 - Scripts run on [CI](.github/workflows/test.yml) on Linux, macOS and Windows:
   by mise on Linux and Windows,
