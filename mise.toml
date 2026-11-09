@@ -6,9 +6,23 @@ lockfile = true # DO NOT FORGET TO `touch mise.lock` if mise.lock does not exist
 npm.package_manager = 'pnpm' # Avoid .mise/locks/** sidecars required by default aube.
 
 
+[task_config]
+includes = ['mise/tasks', 'scripts/tasks.toml']
+
+
 [tools]
 node = 'lts'
 pnpm = 'latest'
+go = 'latest'
+# A specification for CLIs.
+# - Used in Go tests for Kong CLI.
+usage = 'latest'
+
+#--- Generate
+# Generates code from Go interfaces using templates (used for mocks and adapters).
+'go:github.com/vektra/mockery/v3' = 'latest'
+# MockGen generates mock implementations of Go interfaces.
+'go:go.uber.org/mock/mockgen' = 'latest'
 
 #--- Format
 # Opinionated Code Formatter.
@@ -21,6 +35,12 @@ yamlfmt = 'latest'
 #--- Lint
 # Static checker for GitHub Actions workflow files.
 actionlint = 'latest'
+# Fast linters runner for Go.
+golangci-lint = '2.15' # Version must match scripts/.golangci.yml.
+
+#--- Test
+# 'go test' runner with output optimized for humans.
+gotestsum = 'latest'
 
 #--- Release
 # A highly customizable Changelog Generator that follows Conventional Commit specifications.
@@ -31,6 +51,10 @@ gh = 'latest'
 
 [env]
 PNPM_CONFIG_VIRTUAL_STORE_TYPE = 'project' # Fixed in 2026.11.1, remove after updating min_version.
+
+
+[vars]
+scripts_cover = '.cache/scripts.cover.out'
 
 
 # Tasks which read files must not run in parallel with tasks which write them.
@@ -54,27 +78,37 @@ run = [
     { tasks = ['lint', 'test'] },
 ]
 
+[tasks.bump]
+description = 'Upgrade everything'
+# Avoid `run=[{ task = … }]` here to make sure commands will use tools updated by `mise up`.
+run = '''
+mise up --local
+mise run scripts:bump
+'''
+
 [tasks.generate]
 description = 'Generate everything'
-depends = ['generate:*']
+depends = ['scripts:generate']
 
 [tasks.fmt]
 description = 'Format all files'
 # Configs of formatters are YAML and TOML files too,
 # and a formatter must not read a config while it's being rewritten.
+# fmt:toc and fmt:markdown both rewrite markdown files.
 run = [
     { task = 'fmt:yaml' },
     { task = 'fmt:toml' },
-    { task = 'fmt:*' },
+    { task = 'fmt:toc' },
+    { tasks = ['fmt:*', 'scripts:fmt'] },
 ]
 
 [tasks.lint]
 description = 'Run all linters'
-depends = ['lint:*']
+depends = ['lint:*', 'scripts:lint']
 
 [tasks.test]
 description = 'Run all tests'
-depends = ['test:*']
+depends = ['scripts:test']
 
 [tasks.ci]
 description = 'Run all CI tasks'
@@ -82,6 +116,13 @@ run = [
     { task = 'check-drift' },
     { tasks = ['lint', 'test'] },
 ]
+
+[tasks.'fmt:toc']
+description = 'Update tables of contents in markdown files'
+hide = true
+depends = ['scripts:build']
+run = '.cache/bin/toc'
+run_windows = '.cache\bin\toc'
 
 [tasks.'fmt:markdown']
 description = 'Format markdown files'
@@ -103,6 +144,14 @@ run = "git ls-files -z -co --exclude-standard '*.yml' '*.yaml' | xargs -0 -r yam
 description = 'Lint GitHub Action workflows'
 run = 'actionlint'
 
+[tasks.'lint:links']
+description = 'Check local links in markdown files'
+depends = ['scripts:build']
+usage = 'mount run="mise run -q lint:links --usage-spec"'
+raw_args = true
+run = '.cache/bin/lint-links'
+run_windows = '.cache\bin\lint-links'
+
 [tasks.'lint:markdown']
 description = 'Lint markdown files'
 sources = ['**/*.md', '.prettier*', '.editorconfig', 'mise.lock']
@@ -123,6 +172,14 @@ run = "git ls-files -z -co --exclude-standard '*.yml' '*.yaml' | xargs -0 -r yam
 description = 'Add commit hash to .cliffignore to exclude from CHANGELOG'
 usage = 'arg "<commit>" help="Git revision (e.g. HEAD or a1b2c4d)"'
 run = 'git rev-parse --verify "${usage_commit}" >> .cliffignore'
+
+[tasks.toc]
+description = 'Update tables of contents in markdown files'
+depends = ['scripts:build']
+usage = 'mount run="mise run -q toc --usage-spec"'
+raw_args = true
+run = '.cache/bin/toc'
+run_windows = '.cache\bin\toc'
 
 [tasks.check-drift]
 hide = true

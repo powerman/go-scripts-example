@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  main:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -27,3 +27,36 @@ jobs:
       - run: git reset --hard # Work around https://github.com/jdx/mise/discussions/8270.
 
       - run: mise run ci
+
+  # Go scripts work on any OS, while some tools of mise.toml may be unavailable there,
+  # so only tools needed to build and test Go scripts are installed.
+  scripts:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      MISE_AUTO_INSTALL: false # Do not install other tools of mise.toml on `mise run`.
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: go gotestsum usage
+      - run: git reset --hard # Work around https://github.com/jdx/mise/discussions/8270.
+
+      - run: mise run scripts:test
+      - run: mise run toc --check
+      - run: mise run lint:links
+
+  # Aggregate job for branch protection.
+  test:
+    needs: [main, scripts]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Fail if any dependency failed, cancelled or skipped
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
