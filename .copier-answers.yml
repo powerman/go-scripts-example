@@ -1,0 +1,6 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v22
+_src_path: ~/Templates/copier-base
+codegen: true
+custom_cliff: false
+project_name: go-scripts-example
