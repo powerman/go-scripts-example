@@ -40,6 +40,7 @@ and [test-qemu](scripts/test-qemu/) tests scripts in docker on platforms emulate
 - [Add Go scripts to your project](#add-go-scripts-to-your-project)
   - [A project not in Go](#a-project-not-in-go)
   - [A project in Go](#a-project-in-go)
+- [FAQ](#faq)
 
 <!-- tocstop -->
 
@@ -75,7 +76,6 @@ only scripts which became too hard to write and test are rewritten.
 - One toolchain for all non-trivial scripts:
   no test infrastructure for shell (bats, helpers),
   and no second language with its own environment (venv, `package.json`).
-- Go scripts work on Windows without bash.
 - Go is a good fit even for a project which isn't written in Go:
   it's easy to read for anybody, and mise installs it like any other tool.
 
@@ -172,14 +172,16 @@ mise run scripts:cover # Show test coverage of scripts.
 
 ### Why mise
 
-The approach relies on mise, and without it Go scripts would be much less convenient:
+The approach needs a task runner which:
 
-- mise installs Go and other tools of scripts, in the same versions for everybody and on CI.
-- mise does the work of `make` or `go run`:
-  a task rebuilds its program only when files of scripts change.
-- mise completes flags and arguments of a task by the spec printed by the program.
-- mise keeps tasks to develop scripts (generate, format, lint, test, cover) next to them.
+- installs Go and the tools of scripts, in the same versions for everybody and on CI;
+- does the work of `make` or `go run`,
+  but rebuilds a program only when files of scripts change;
+- completes flags and arguments of a task by the spec printed by the program;
+- keeps tasks to develop scripts (generate, format, lint, test, cover) next to them.
 
+mise provides all of it and is the most convenient runner known to the author;
+this example uses mise.
 A script still doesn't depend on mise:
 it's an ordinary Go program which can be built by `go build` and run by hand or on CI.
 
@@ -293,6 +295,10 @@ so it's usually a sign that the script should have stayed in shell.
   ([world_test.go](scripts/toc/internal/world_test.go))
   with a real git repository in a temporary directory,
   which checks that commands work on each OS.
+  A command which can't run in a test
+  (like `docker run` of [test-qemu](scripts/test-qemu/internal/world_test.go))
+  is replaced by the test binary, which prints its arguments and exits with a given status:
+  the test checks the arguments, the output and the exit status seen by the adapter.
 
 ### Libraries
 
@@ -360,3 +366,88 @@ The same, with a few differences:
   so it counts neither in the total of the project nor in its badge.
 - Root tasks of the project (`lint:go`, `test:go`) don't see the nested module,
   while `scripts:*` tasks are kept apart from them by their prefix.
+
+## FAQ
+
+**What exactly is the approach here?**
+Only the task layer:
+root mise tasks which build Go CLIs on demand into `.cache/bin`
+and complete their flags and arguments.
+Everything about the Go code itself is outside the approach:
+its structure, [libraries](#libraries), code generators and linter config.
+This example shows one recommended way to write and test it.
+
+**Is mise required?**
+No, but a task runner with the features listed in [Why mise](#why-mise) is.
+Without such a runner the scripts still work, but slower and without completion.
+
+**Is a separate Go module required?**
+No.
+`scripts/go.mod` keeps dependencies of scripts out of the project,
+so the same layout works in a project in any language.
+If the dependencies don't get in the way,
+a project in Go may keep scripts in its own `go.mod`.
+The same is true for `scripts/tasks.toml`:
+it's how this example keeps development tasks next to scripts
+and includes them from the root `mise.toml`;
+manage the Go build however you like.
+
+**Why `scripts/`?**
+It's the usual place for scripts of a project, so keeping Go scripts here is a reminder
+to rewrite complex shell scripts from this directory in Go.
+Simple linear shell scripts may stay in shell.
+The name is not a requirement: put Go scripts wherever you like.
+
+**Which shell scripts should be rewritten in Go?**
+Only those which need a test, shared code, or real logic.
+Trivial and linear shell scripts stay in shell,
+and a variable, an `if` or a loop doesn't make a script complex.
+See [Where a script lives](#where-a-script-lives).
+
+**Why so many small files instead of one?**
+The layout serves one goal: the logic can be tested without external commands.
+The `port`/`app`/`world`/`wire`/`cmd`/`main` split
+is the simplest form of hexagonal architecture known to the author,
+and it makes the boundary between logic and the OS visible.
+Each of these files is small and trivial.
+Merging them is possible, but it doesn't make the code objectively better.
+A single `main.go` with tests of pure functions isn't a simpler alternative:
+the logic of a script is mostly decisions made on results of commands,
+and they can't be tested without a boundary between the logic and the OS.
+
+**Does the layout pay off for a script which mostly runs commands?**
+Yes, see [test-qemu](scripts/test-qemu/).
+Its logic is small, but it still makes decisions:
+which Go version to use, a volume or a directory for a cache,
+whether a platform failed its tests or can't run containers at all.
+`World` takes structured values (a `Container`) instead of command-line arguments,
+so the Fake doesn't emulate the command-line interface of docker:
+a test of the logic checks which containers were run,
+and a test of the real `World` checks the arguments by running the test binary as docker.
+
+**Can a Fake differ from the real command?**
+Yes, and then tests of the logic pass while the script fails.
+Keep the Fake trivial by keeping `World` at the level the logic needs
+(e.g. "run this container", not "run docker with these arguments"),
+and check the real `World` by an integration test.
+
+**Are both code generators required?**
+No.
+[mockery](https://github.com/vektra/mockery) generates the Fake of `World`,
+and [mockgen](https://github.com/uber-go/mock) generates the Mock of `App`.
+Any way to test the logic without external commands will do,
+e.g. hand-written fakes or a temporary directory in an integration test.
+
+**Is Go a heavy dependency for a project not in Go?**
+No.
+mise installs Go like any other tool,
+and Go gets into neither the repository nor docker images and releases of the project.
+A program is rebuilt only after a change of scripts, and Go builds fast.
+
+**Who maintains Go scripts in a team which doesn't write Go?**
+A team which doesn't know Go at all is unlikely to rewrite its scripts in Go.
+For others Go is easy to read, and AI agents write such scripts well:
+the layout is the same in every script,
+and the compiler, the linter and tests check each change.
+The approach is also described as agent skills,
+see [Add Go scripts to your project](#add-go-scripts-to-your-project).
