@@ -20,7 +20,6 @@ func kongRun(t *check.C, a internal.App, args ...string) error {
 	t.Helper()
 	var cli internal.CLI
 	k, err := kong.New(&cli,
-		kong.Name("toc"),
 		kong.Writers(io.Discard, io.Discard),
 		kong.Exit(func(int) {}),
 	)
@@ -80,5 +79,5 @@ func TestCLI_Run_InvalidLevel(tt *testing.T) {
 
 func TestUsageSpec(t *testing.T) {
 	t.Parallel()
-	kongusage.CheckSpec(t, kong.Must(&internal.CLI{}, kong.Name("toc")))
+	kongusage.CheckSpec(t, kong.Must(&internal.CLI{}))
 }

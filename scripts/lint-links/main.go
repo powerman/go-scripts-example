@@ -11,7 +11,6 @@ import (
 func main() {
 	var cli internal.CLI
 	ctx := kong.Parse(&cli,
-		kong.Name("lint-links"),
 		kong.Description("Check that local links in markdown files point to files of the repository"+
 			" and to existing headings of markdown files."),
 		kong.UsageOnError(),

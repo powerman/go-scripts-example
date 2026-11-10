@@ -20,7 +20,6 @@ func kongRun(t *check.C, a internal.App, args ...string) error {
 	t.Helper()
 	var cli internal.CLI
 	k, err := kong.New(&cli,
-		kong.Name("lint-links"),
 		kong.Writers(io.Discard, io.Discard),
 		kong.Exit(func(int) {}),
 	)
@@ -59,5 +58,5 @@ func TestCLI_Run(tt *testing.T) {
 
 func TestUsageSpec(t *testing.T) {
 	t.Parallel()
-	kongusage.CheckSpec(t, kong.Must(&internal.CLI{}, kong.Name("lint-links")))
+	kongusage.CheckSpec(t, kong.Must(&internal.CLI{}))
 }

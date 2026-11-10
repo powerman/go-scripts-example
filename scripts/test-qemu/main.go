@@ -11,7 +11,6 @@ import (
 func main() {
 	var cli internal.CLI
 	ctx := kong.Parse(&cli,
-		kong.Name("test-qemu"),
 		kong.Description("Test Go scripts and run them in docker containers of given platforms."+
 			" A foreign platform needs QEMU: when its container can't run, the program prints how to set it up."),
 		kong.UsageOnError(),

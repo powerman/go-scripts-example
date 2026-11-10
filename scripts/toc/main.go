@@ -11,7 +11,6 @@ import (
 func main() {
 	var cli internal.CLI
 	ctx := kong.Parse(&cli,
-		kong.Name("toc"),
 		kong.Description("Update tables of contents between <!-- toc --> and <!-- tocstop --> in markdown files."),
 		kong.UsageOnError(),
 	)

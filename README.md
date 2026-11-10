@@ -238,8 +238,6 @@ run_windows = '"%SCRIPTS_BIN%\toc"'
   so `--help` and invalid flags reach Kong.
   mise removes `--` after the task name,
   so an argument `--` needs `mise run toc -- -- …`.
-- A program of task `<name>` is `scripts/<name>/`, with `:` in the name replaced by `-`.
-  The binary is named by its directory, so `kong.Name` sets the task name for help.
 - A binary which only tasks and other binaries run has no task:
   a task is needed only to run a binary by hand.
 
