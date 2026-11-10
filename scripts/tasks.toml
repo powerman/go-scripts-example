@@ -73,10 +73,13 @@ run = [
 description = 'Lint usage specs of Go scripts'
 hide = true
 depends = 'scripts:build'
+# usage lint prints both "No issues found." and findings to stdout,
+# so findings are shown by a second run only when the first one fails.
 run = '''
 for f in "${SCRIPTS_BIN:?}"/*; do
     spec=$("$f" --usage-spec)
-    printf '%s\n' "$spec" | usage lint -W -
+    printf '%s\n' "$spec" | usage lint -W - >/dev/null 2>&1 ||
+        printf '%s\n' "$spec" | usage lint -W -
 done
 '''
 
