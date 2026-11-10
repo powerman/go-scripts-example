@@ -50,6 +50,7 @@ gh = 'latest'
 
 
 [env]
+SCRIPTS_BIN = '{{config_root}}/.cache/scripts' # Go scripts built by scripts:build.
 PNPM_CONFIG_VIRTUAL_STORE_TYPE = 'project' # Fixed in 2026.11.1, remove after updating min_version.
 
 
@@ -137,13 +138,13 @@ run = "git ls-files -z -co --exclude-standard '*.yml' '*.yaml' | xargs -0 -r yam
 description = 'Lint GitHub Action workflows'
 run = 'actionlint'
 
-[tasks.'lint:links']
-description = 'Check local links in markdown files'
+[tasks.'lint:docs']
+description = 'Check tables of contents and local links in markdown files'
 depends = ['scripts:build']
-usage = 'mount run="mise run -q lint:links --usage-spec"'
+usage = 'mount run="mise run -q lint:docs --usage-spec"'
 raw_args = true
-run = '.cache/bin/lint-links'
-run_windows = '.cache\bin\lint-links'
+run = '"${SCRIPTS_BIN:?}/lint-docs"'
+run_windows = '"%SCRIPTS_BIN%\lint-docs"'
 
 [tasks.'lint:markdown']
 description = 'Lint markdown files'
@@ -171,8 +172,8 @@ description = 'Update tables of contents in markdown files'
 depends = ['scripts:build']
 usage = 'mount run="mise run -q toc --usage-spec"'
 raw_args = true
-run = '.cache/bin/toc'
-run_windows = '.cache\bin\toc'
+run = '"${SCRIPTS_BIN:?}/toc"'
+run_windows = '"%SCRIPTS_BIN%\toc"'
 
 # Not test:qemu: it's slow and needs docker, so `test:*` of a project must not run it.
 [tasks.test-qemu]
@@ -180,8 +181,8 @@ description = 'Test Go scripts on other platforms emulated by QEMU in docker'
 depends = ['scripts:build']
 usage = 'mount run="mise run -q test-qemu --usage-spec"'
 raw_args = true
-run = '.cache/bin/test-qemu'
-run_windows = '.cache\bin\test-qemu'
+run = '"${SCRIPTS_BIN:?}/test-qemu"'
+run_windows = '"%SCRIPTS_BIN%\test-qemu"'
 
 [tasks.check-drift]
 hide = true

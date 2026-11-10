@@ -50,8 +50,7 @@ jobs:
       - uses: powerman/.github/.github/actions/cache-go-and-tools@main
 
       - run: mise run scripts:test
-      - run: mise run toc --check
-      - run: mise run lint:links
+      - run: mise run lint:docs
 
   # Testing on available native platforms.
   # Go scripts don't need mise: they are built and run by Go alone.
@@ -66,6 +65,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     env:
+      SCRIPTS_BIN: ${{ github.workspace }}/.cache/scripts
       KONGUSAGE_TEST_SKIP_USAGE: 1 # Tool usage of mise.toml is not installed here.
     defaults:
       run:
@@ -84,9 +84,8 @@ jobs:
       - run: go -C scripts test -timeout=60s ./...
         if: matrix.os == 'windows-11-arm'
 
-      - run: go -C scripts build -o ../.cache/bin/ ./...
-      - run: .cache/bin/toc --check
-      - run: .cache/bin/lint-links
+      - run: go -C scripts build -o "$SCRIPTS_BIN/" ./...
+      - run: '"$SCRIPTS_BIN/lint-docs"'
 
   # Testing on available docker QEMU platforms (Linux only).
   qemu:
@@ -124,13 +123,13 @@ jobs:
             -v "$HOME/.cache/go-build:/root/.cache/go-build" \
             -v "$HOME/go:/go" \
             -e KONGUSAGE_TEST_SKIP_USAGE=1 \
+            -e SCRIPTS_BIN=/workspace/.cache/scripts \
             "golang:${V}-alpine" sh -e -c '
               apk add --no-cache git >/dev/null
               git config --global --add safe.directory /workspace
               go -C scripts test -timeout=60s ./...
-              go -C scripts build -o ../.cache/bin/ ./...
-              .cache/bin/toc --check
-              .cache/bin/lint-links
+              go -C scripts build -o "$SCRIPTS_BIN/" ./...
+              "$SCRIPTS_BIN/lint-docs"
             '
 
   # The same as qemu, but by task test-qemu, which can also be run locally.

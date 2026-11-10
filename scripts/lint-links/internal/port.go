@@ -1,6 +1,6 @@
 //go:generate mockgen -source=port.go -destination=mock.port_test.go -package=internal_test -exclude_interfaces=World
 
-// Package internal implements task lint:links.
+// Package internal implements program lint-links.
 package internal
 
 import "errors"

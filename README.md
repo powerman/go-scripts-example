@@ -14,7 +14,8 @@ copy the parts you need and adapt them.
 
 The scripts here are real tasks of this repository:
 [toc](scripts/toc/) maintains the table of contents below,
-[lint:links](scripts/lint-links/) checks links in markdown files on CI,
+[lint:docs](scripts/lint-docs/) checks it and links in markdown files
+by `toc --check` and [lint-links](scripts/lint-links/) on CI,
 on Linux, macOS and Windows,
 and [test-qemu](scripts/test-qemu/) tests scripts in docker on platforms emulated by QEMU.
 
@@ -32,6 +33,7 @@ and [test-qemu](scripts/test-qemu/) tests scripts in docker on platforms emulate
   - [Why mise](#why-mise)
   - [A separate Go module](#a-separate-go-module)
   - [Build on demand](#build-on-demand)
+  - [Running binaries](#running-binaries)
   - [Completion](#completion)
   - [Code of a script](#code-of-a-script)
   - [Tests: Fake for World, Mock for App](#tests-fake-for-world-mock-for-app)
@@ -85,10 +87,12 @@ so a Go script is as convenient to run as a shell script.
 
 ## What this example shows
 
-- Two scripts which process files, [toc](scripts/toc/) and [lint:links](scripts/lint-links/),
+- Two scripts which process files, [toc](scripts/toc/) and [lint-links](scripts/lint-links/),
   with code shared in [scripts/internal/markdown](scripts/internal/markdown/).
 - A script which orchestrates external commands, [test-qemu](scripts/test-qemu/):
   it has little logic and a `World` which runs docker.
+- A script which runs binaries of other scripts, [lint:docs](scripts/lint-docs/):
+  it finds them by `$SCRIPTS_BIN`, like tasks do, without a nested `mise run`.
 - Scripts as mise tasks: a fast rebuild on demand, completion of flags and arguments,
   tasks to build, generate, format, lint, test and cover scripts.
 - A layout of a script which makes it testable:
@@ -99,7 +103,7 @@ so a Go script is as convenient to run as a shell script.
   and [kongusage](https://github.com/powerman/kongusage) for its completion in mise.
 - [bitfield/script](https://github.com/bitfield/script) to run commands,
   so an adapter looks almost like a shell command:
-  [toc](scripts/toc/internal/world.go), [lint:links](scripts/lint-links/internal/world.go),
+  [toc](scripts/toc/internal/world.go), [lint-links](scripts/lint-links/internal/world.go),
   [test-qemu](scripts/test-qemu/internal/world.go).
 - Scripts used by tasks of the project ([fmt and lint](mise.toml)) and run on CI.
 - Scripts run on [CI](.github/workflows/test.yml) on Linux, macOS and Windows:
@@ -121,7 +125,8 @@ so a Go script is as convenient to run as a shell script.
     ├── .mockery/               Template of fakes.
     ├── internal/
     │   └── markdown/           Code shared by scripts.
-    ├── lint-links/             Program of task lint:links.
+    ├── lint-docs/              Program of task lint:docs.
+    ├── lint-links/             Program without a task, run by lint-docs.
     ├── test-qemu/              Program of task test-qemu.
     └── toc/                    Program of task toc.
         ├── main.go             Parses the CLI and runs it.
@@ -147,7 +152,7 @@ mise install
 ```sh
 mise run toc --help
 mise run toc --check README.md
-mise run lint:links
+mise run lint:docs
 mise run test-qemu linux/arm/v7 linux/riscv64
 ```
 
@@ -155,8 +160,9 @@ Arguments are passed to the script as is, `--help` and invalid flags included.
 Flags and arguments of a task are completed by Tab
 when [completion of mise](https://mise.jdx.dev/cli/completion.html) is enabled.
 
-A program is in `.cache/bin/` and may be run directly,
-but it may be outdated: run `mise run scripts:build` first.
+Binaries of scripts are built into `.cache/scripts/`,
+but run them by tasks:
+a task rebuilds a binary before the run and completes its arguments.
 
 ### Develop scripts
 
@@ -220,11 +226,11 @@ description = 'Update tables of contents in markdown files'
 depends = ['scripts:build']
 usage = 'mount run="mise run -q toc --usage-spec"'
 raw_args = true
-run = '.cache/bin/toc'
-run_windows = '.cache\bin\toc'
+run = '"${SCRIPTS_BIN:?}/toc"'
+run_windows = '"%SCRIPTS_BIN%\toc"'
 ```
 
-- `scripts:build` rebuilds all programs into `.cache/bin/`
+- `scripts:build` rebuilds binaries of all programs into `$SCRIPTS_BIN`
   only when files of `scripts/` change (by `sources` and `outputs`),
   so a start of a task takes a few milliseconds.
   `go run` isn't used: its own check of changes takes much longer.
@@ -234,6 +240,32 @@ run_windows = '.cache\bin\toc'
   so an argument `--` needs `mise run toc -- -- …`.
 - A program of task `<name>` is `scripts/<name>/`, with `:` in the name replaced by `-`.
   The binary is named by its directory, so `kong.Name` sets the task name for help.
+- A binary which only tasks and other binaries run has no task:
+  a task is needed only to run a binary by hand.
+
+### Running binaries
+
+[mise.toml](mise.toml) gives every task and binary the directory of binaries:
+
+```toml
+[env]
+SCRIPTS_BIN = '{{config_root}}/.cache/scripts' # Go scripts built by scripts:build.
+```
+
+Tasks and binaries find binaries only by this variable,
+so it works from any directory, and the path is written in one place.
+
+- A task which runs a binary depends on `scripts:build` and runs `"${SCRIPTS_BIN:?}/<name>"`.
+- A binary runs another binary by `filepath.Join(os.Getenv("SCRIPTS_BIN"), "<name>")`
+  ([lint-docs](scripts/lint-docs/internal/world.go)),
+  without a build: the task which started it has built all binaries.
+- A binary isn't run by a nested `mise run`:
+  mise resolves tools and env for each task it runs,
+  so a nested `mise run` takes about 100 ms against about 3 ms of a direct start,
+  and mise adds `ERROR task failed` to the output on any non-zero exit status.
+- `$SCRIPTS_BIN` isn't added to `PATH`:
+  binaries have short common names and would shadow commands of the system
+  in tasks and in the shell activated by mise.
 
 ### Completion
 
@@ -252,7 +284,7 @@ type CLI struct {
 mise does it only on Tab, so the spec is never stale,
 and a broken spec breaks completion of only this task.
 A test checks the spec by `kongusage.CheckSpec`,
-and `scripts:lint:usage` lints specs of all programs.
+and `scripts:lint:usage` lints specs of all binaries.
 
 ### Code of a script
 
@@ -323,17 +355,18 @@ With bitfield/script:
 
 Go scripts work on Windows, but mise tasks around them need care:
 
-- mise runs inline scripts by `cmd /c` on Windows, which can't run `.cache/bin/toc`,
-  so a task which runs a program has `run_windows = '.cache\bin\toc'`.
+- mise runs inline scripts by `cmd /c` on Windows, which doesn't expand `$SCRIPTS_BIN`,
+  so a task which runs a binary has `run_windows = '"%SCRIPTS_BIN%\toc"'`.
 - Tasks needed to run scripts (`scripts:build`, `scripts:build:clean`, `scripts:test`)
-  work in cmd too, with PowerShell in `run_windows` where POSIX sh is needed.
+  work in cmd too, with `run_windows` where they use sh:
+  `%SCRIPTS_BIN%` instead of `$SCRIPTS_BIN`, PowerShell instead of a loop.
   Other tasks to develop scripts need POSIX sh (e.g. Git Bash).
 - Some tools of `mise.toml` may be unavailable on Windows,
   so [CI](.github/workflows/test.yml) installs only tools of scripts
   (`install_args` of `jdx/mise-action`)
   and sets `MISE_AUTO_INSTALL=false`, so `mise run` doesn't try to install others.
 - Git returns paths with `/`, while arguments may use `\`:
-  [lint:links](scripts/lint-links/internal/app.go) converts them by `filepath.ToSlash`.
+  [lint-links](scripts/lint-links/internal/app.go) converts them by `filepath.ToSlash`.
 
 ## Add Go scripts to your project
 
@@ -351,7 +384,7 @@ This repository is such a project. Copy:
   and [scripts/.mockery/](scripts/.mockery/);
 - `scripts/go.mod` with your module path, e.g. `github.com/you/project/scripts`;
 - from [mise.toml](mise.toml): `[task_config]`, tools of Go scripts,
-  `vars.scripts_cover`, tasks `bump` and `cachedir`,
+  `env.SCRIPTS_BIN`, `vars.scripts_cover`, tasks `bump` and `cachedir`,
   and `scripts:*` tasks in root tasks `generate`, `fmt`, `lint` and `test`.
 
 ### A project in Go
@@ -371,8 +404,8 @@ The same, with a few differences:
 
 **What exactly is the approach here?**
 Only the task layer:
-root mise tasks which build Go CLIs on demand into `.cache/bin`
-and complete their flags and arguments.
+root mise tasks which build Go CLIs on demand into `$SCRIPTS_BIN`,
+run them directly and complete their flags and arguments.
 Everything about the Go code itself is outside the approach:
 its structure, [libraries](#libraries), code generators and linter config.
 This example shows one recommended way to write and test it.

@@ -95,7 +95,7 @@ func container(platform, image string, cmd []string) internal.Container {
 			{Source: "gocache", Target: "/root/.cache/go-build"},
 			{Source: "gomodcache", Target: "/go/pkg/mod"},
 		},
-		Env: []string{"KONGUSAGE_TEST_SKIP_USAGE=1"},
+		Env: []string{"SCRIPTS_BIN=/tmp/bin", "KONGUSAGE_TEST_SKIP_USAGE=1"},
 		Cmd: cmd,
 	}
 }

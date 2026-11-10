@@ -22,15 +22,14 @@ const (
 var reVolume = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
 
 // containerScript runs in the alpine image, which has no git needed by scripts.
-// The repository is mounted read-only, so programs are built outside of it.
-// Programs run in the container to check that they work on its platform.
+// The repository is mounted read-only, so binaries are built outside of it.
+// Binaries run in the container to check that they work on its platform.
 const containerScript = `
 apk add --no-cache git >/dev/null
 git config --global --add safe.directory ` + workdir + `
 go -C scripts test -timeout=60s ./...
-go -C scripts build -o /tmp/bin/ ./...
-/tmp/bin/toc --check
-/tmp/bin/lint-links
+go -C scripts build -o "$SCRIPTS_BIN/" ./...
+"$SCRIPTS_BIN/lint-docs"
 `
 
 // hintQEMU is printed with architectures of platforms whose containers can't run.
@@ -84,7 +83,10 @@ func (a *app) Test(opts Options) error {
 			goCache,
 			goModCache,
 		},
-		Env: []string{"KONGUSAGE_TEST_SKIP_USAGE=1"}, // Tool usage isn't in the image.
+		Env: []string{
+			"SCRIPTS_BIN=/tmp/bin",
+			"KONGUSAGE_TEST_SKIP_USAGE=1", // Tool usage isn't in the image.
+		},
 		Cmd: []string{"sh", "-e", "-c", containerScript},
 	}
 	// A failure of tests and a failure to start a container of a platform are told apart

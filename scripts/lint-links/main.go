@@ -1,5 +1,5 @@
 // Lint-links checks local links in markdown files.
-// It is an example of a mise task in Go.
+// It is an example of a Go script without a mise task, run by another Go script.
 package main
 
 import (
@@ -11,7 +11,7 @@ import (
 func main() {
 	var cli internal.CLI
 	ctx := kong.Parse(&cli,
-		kong.Name("lint:links"),
+		kong.Name("lint-links"),
 		kong.Description("Check that local links in markdown files point to files of the repository"+
 			" and to existing headings of markdown files."),
 		kong.UsageOnError(),
