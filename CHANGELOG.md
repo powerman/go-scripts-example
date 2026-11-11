@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 📚 Documentation
 
 - Clarify MiseTools and GoModules scope in outdated World by @powerman in [19a5606]
+- Explain cost of starting scripts and why tasks run binaries by @powerman in [a95515e]
+- Explain mise requirements and working directory of tasks by @powerman in [ae19208]
+- Explain go tool alternative to mise for running scripts by @powerman in [b0e72bf]
+- Separate the task layer from the Go code of scripts by @powerman in [d4859cd]
+- Reword README and script comments of the task layer by @powerman in [95c141c]
 
 [0.4.0]: https://github.com/powerman/go-scripts-example/compare/v0.3.0..v0.4.0
 [041df38]: https://github.com/powerman/go-scripts-example/commit/041df385b2bba2157699829da525d87541a58d95
@@ -27,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [500cba5]: https://github.com/powerman/go-scripts-example/commit/500cba5036daa079146538912839aed0235e349a
 [19a5606]: https://github.com/powerman/go-scripts-example/commit/19a5606df64efd1cc38c9ce1f2582ef0457deea7
 [42223a4]: https://github.com/powerman/go-scripts-example/commit/42223a424e1e3b034bb66138820e4072e0cdf0da
+[a95515e]: https://github.com/powerman/go-scripts-example/commit/a95515e4d7526a861f537d0bb18c3c00405e570a
+[ae19208]: https://github.com/powerman/go-scripts-example/commit/ae19208d8e862b561e97ae6b631b661439434467
+[b0e72bf]: https://github.com/powerman/go-scripts-example/commit/b0e72bf36791ae477736678b508b4df556d82cdf
+[d4859cd]: https://github.com/powerman/go-scripts-example/commit/d4859cde961a5cb7798501814de36ac416ba8a1d
+[95c141c]: https://github.com/powerman/go-scripts-example/commit/95c141c6e82732d560cb9929492b9a484df75ca5
 
 ## [0.3.0] - 2026-11-10
 
