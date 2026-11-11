@@ -1,4 +1,4 @@
-# mockery generates code from interfaces listed here using templates.
+# mockery generates code from interfaces selected here using templates.
 # Each template kind has an anchor; an interface uses one (config) or several (configs).
 log-level: warn
 formatter: goimports
@@ -13,19 +13,10 @@ _anchors:
     filename: 'fake.{{.InterfaceFile | base | trimSuffix ".go"}}_test.go'
     structname: 'Fake{{.InterfaceName | firstUpper}}'
 packages:
-  github.com/powerman/go-scripts-example/scripts/lint-docs/internal:
-    interfaces:
-      World:
-        config: *fake
-  github.com/powerman/go-scripts-example/scripts/lint-links/internal:
-    interfaces:
-      World:
-        config: *fake
-  github.com/powerman/go-scripts-example/scripts/test-qemu/internal:
-    interfaces:
-      World:
-        config: *fake
-  github.com/powerman/go-scripts-example/scripts/toc/internal:
-    interfaces:
-      World:
-        config: *fake
+  # Every package of every program is scanned for World,
+  # so a new program gets its Fake without a change here.
+  github.com/powerman/go-scripts-example/scripts:
+    config:
+      !!merge <<: *fake
+      recursive: true
+      include-interface-regex: '^World$'
