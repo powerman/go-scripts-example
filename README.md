@@ -36,8 +36,12 @@ This example shows one recommended way to write and test it.
 It isn't "Go instead of shell":
 Go is where a shell script goes when it needs a test,
 while linear shell scripts stay in shell.
-The verbosity of Go costs little when AI agents write the code,
+
+Go scripts work well with AI agents:
+the verbosity of Go costs little when agents write the code,
 and the compiler, the linter and tests guard their changes.
+The approach is also described as agent skills,
+see [Add Go scripts to your project](#add-go-scripts-to-your-project).
 
 <!-- toc -->
 
@@ -109,6 +113,17 @@ so a Go script is as convenient to run as a shell script.
 
 ## What this example shows
 
+- Scripts as mise tasks: a fast rebuild on demand, completion of flags and arguments,
+  tasks to build, generate, format, lint, test and cover scripts.
+- A script layout which makes the script testable:
+  a `World` interface for external commands and files,
+  a stateful Fake of `World` for tests of the logic,
+  a Mock of `App` for tests of the CLI.
+- Scripts used by tasks of the project ([fmt and lint](mise.toml))
+  and run by [CI](.github/workflows/test.yml) on Linux, macOS and Windows:
+  by mise on Linux and Windows,
+  and by Go alone on other native platforms and on Linux platforms emulated by QEMU.
+  The test-qemu task does the same as the QEMU job of CI, but locally.
 - Two scripts which process files,
   [toc](scripts/toc/) (tables of contents) and [lint-links](scripts/lint-links/) (local links),
   with code shared in [scripts/internal/markdown](scripts/internal/markdown/).
@@ -125,22 +140,11 @@ so a Go script is as convenient to run as a shell script.
   it finds them via `$SCRIPTS_BIN`, as tasks do, without a nested `mise run`.
   It's only a demo of this:
   in a real project such a linear script would be an inline shell task.
-- Scripts as mise tasks: a fast rebuild on demand, completion of flags and arguments,
-  tasks to build, generate, format, lint, test and cover scripts.
-- A script layout which makes the script testable:
-  a `World` interface for external commands and files,
-  a stateful Fake of `World` for tests of the logic,
-  a Mock of `App` for tests of the CLI.
 - [Kong](https://github.com/alecthomas/kong) for the CLI
   and [kongusage](https://github.com/powerman/kongusage) for its completion in mise.
 - [bitfield/script](https://github.com/bitfield/script) for pipes with filters,
   so an adapter looks almost like a shell pipeline:
   [outdated](scripts/outdated/internal/world.go).
-- Scripts used by tasks of the project ([fmt and lint](mise.toml))
-  and run by [CI](.github/workflows/test.yml) on Linux, macOS and Windows:
-  by mise on Linux and Windows,
-  and by Go alone on other native platforms and on Linux platforms emulated by QEMU.
-  The test-qemu task does the same as the QEMU job of CI, but locally.
 
 ## Layout
 
@@ -240,8 +244,8 @@ This is the approach itself; the Go code of a script is up to you.
 The approach needs a task runner which:
 
 - installs Go and the tools of scripts, at the same versions for everybody and on CI;
-- does the work of `make` or `go run`,
-  but rebuilds a program only when files of scripts change;
+- does the work of `make` or `go run`:
+  rebuilds a program only when files of scripts change, then runs it;
 - completes a task's flags and arguments using the spec printed by the program;
 - keeps tasks for developing scripts (generate, format, lint, test, cover) next to the scripts.
 
@@ -254,8 +258,8 @@ it's an ordinary Go program which can be built with `go build` and run by hand o
 
 `scripts/` is a separate Go module with its own [go.mod](scripts/go.mod):
 
-- dependencies of scripts don't end up in the project's `go.mod`;
 - the same layout works in projects in any language;
+- in a Go project, dependencies of scripts don't end up in the project's `go.mod`;
 - in a Go project, `go list ./...` in the root skips the nested module,
   so the project's linters, tests and coverage don't see the scripts.
 
@@ -263,8 +267,6 @@ Go commands for scripts run in `scripts/`:
 `go run ./scripts/toc` from the root fails, because the root has no `go.mod`.
 That's why each task in [scripts/tasks.toml](scripts/tasks.toml) has `dir = 'scripts'`.
 
-`scripts/` has no `mise.toml` of its own: mise loads configs of parent directories too,
-so tools, tasks and settings of both would mix.
 The tools of scripts are those of the root [mise.toml](mise.toml),
 and the tasks for developing scripts are included by it:
 
@@ -272,8 +274,6 @@ and the tasks for developing scripts are included by it:
 [task_config]
 includes = ['mise/tasks', 'scripts/tasks.toml']
 ```
-
-`includes` replaces the default directories of file tasks, so `mise/tasks` must be listed too.
 
 ### Build on demand
 
@@ -552,7 +552,7 @@ The name is not a requirement: put Go scripts wherever you like.
 **Which shell scripts should be rewritten in Go?**
 Only those which need a test, shared code, or real logic.
 Trivial and linear shell scripts stay in shell,
-and a variable, an `if` or a loop doesn't make a script complex.
+and a single variable, `if` or loop doesn't make a script complex.
 See [Where a script lives](#where-a-script-lives).
 
 **Why so many small files instead of one?**
