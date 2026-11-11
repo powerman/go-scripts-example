@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"maps"
 	"path"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -17,7 +16,7 @@ import (
 )
 
 var (
-	errGit   = errors.New("stub git error")
+	errFind  = errors.New("stub find error")
 	errRead  = errors.New("stub read error")
 	errWrite = errors.New("stub write error")
 )
@@ -32,22 +31,17 @@ type world struct {
 func newWorld(files map[string]string) *world {
 	w := &world{FakeWorld: NewFakeWorld(), Files: make(map[string]string)}
 	maps.Copy(w.Files, files)
-	w.GitGrepFilesFunc.SetDefaultHook(w.gitGrepFiles)
+	w.TOCFilesFunc.SetDefaultHook(w.tocFiles)
 	w.ReadFileFunc.SetDefaultHook(w.readFile)
 	w.WriteFileFunc.SetDefaultHook(w.writeFile)
 	return w
 }
 
-func (w *world) gitGrepFiles(pattern string, pathspecs ...string) ([]string, error) {
-	re := regexp.MustCompile("(?m)" + pattern)
+func (w *world) tocFiles() ([]string, error) {
 	var names []string
 	for name, data := range w.Files {
-		for _, pathspec := range pathspecs {
-			// Git pathspec "*.md" matches files in subdirectories too.
-			ok, _ := path.Match(pathspec, path.Base(name))
-			if ok && re.MatchString(data) {
-				names = append(names, name)
-			}
+		if path.Ext(name) == ".md" && slices.Contains(strings.Split(data, "\n"), "<!-- toc -->") {
+			names = append(names, name)
 		}
 	}
 	slices.Sort(names)
@@ -231,14 +225,14 @@ func TestApp_Update(tt *testing.T) {
 func TestApp_Update_Errors(tt *testing.T) {
 	tt.Parallel()
 
-	tt.Run("GitGrepFiles", func(tt *testing.T) {
+	tt.Run("TOCFiles", func(tt *testing.T) {
 		tt.Parallel()
 		t := check.T(tt).MustAll()
 		w := newWorld(nil)
-		w.GitGrepFilesFunc.PushReturn(nil, errGit)
+		w.TOCFilesFunc.PushReturn(nil, errFind)
 
 		err := internal.NewApp(w, &bytes.Buffer{}).Update(opts)
-		t.Err(err, errGit)
+		t.Err(err, errFind)
 	})
 
 	tt.Run("ContinueAfterError", func(tt *testing.T) {

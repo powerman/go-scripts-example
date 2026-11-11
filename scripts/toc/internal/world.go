@@ -9,14 +9,13 @@ import (
 // RealWorld implements [World] by real commands and files.
 type RealWorld struct{}
 
-// GitGrepFiles implements [World].
-func (RealWorld) GitGrepFiles(regexp string, pathspecs ...string) ([]string, error) {
+// TOCFiles implements [World].
+func (RealWorld) TOCFiles() ([]string, error) {
 	// core.quotePath=false prints non-ASCII paths as is.
-	args := append([]string{
+	p := script.NewPipe().WithStderr(os.Stderr).ExecCommand("git",
 		"-c", "core.quotePath=false", "grep", "--untracked",
-		"--files-with-matches", "--extended-regexp", "-e", regexp, "--",
-	}, pathspecs...)
-	p := script.NewPipe().WithStderr(os.Stderr).ExecCommand("git", args...)
+		"--files-with-matches", "--extended-regexp", "-e", "^<!-- "+MarkerStart+" -->$",
+		"--", "*.md")
 	files, err := p.Slice()
 	if p.ExitStatus() == 1 { // Like `git grep … || [ $? -eq 1 ]` in shell: no files found.
 		return nil, nil

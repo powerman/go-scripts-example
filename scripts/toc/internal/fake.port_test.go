@@ -13,12 +13,12 @@ import (
 // FakeWorld is a fake implementation of the World interface
 // (from the package github.com/powerman/go-scripts-example/scripts/toc/internal) used for unit testing.
 type FakeWorld struct {
-	// GitGrepFilesFunc is an instance of a fake function object
-	// controlling the behavior of the method GitGrepFiles.
-	GitGrepFilesFunc FakeWorldGitGrepFilesFunc
 	// ReadFileFunc is an instance of a fake function object
 	// controlling the behavior of the method ReadFile.
 	ReadFileFunc FakeWorldReadFileFunc
+	// TOCFilesFunc is an instance of a fake function object
+	// controlling the behavior of the method TOCFiles.
+	TOCFilesFunc FakeWorldTOCFilesFunc
 	// WriteFileFunc is an instance of a fake function object
 	// controlling the behavior of the method WriteFile.
 	WriteFileFunc FakeWorldWriteFileFunc
@@ -34,131 +34,16 @@ func NewFakeWorld() *FakeWorld {
 // All methods delegate to the given implementation, unless overwritten.
 func NewFakeWorldFrom(i internal.World) *FakeWorld {
 	return &FakeWorld{
-		GitGrepFilesFunc: FakeWorldGitGrepFilesFunc{
-			defaultHook: i.GitGrepFiles,
-		},
 		ReadFileFunc: FakeWorldReadFileFunc{
 			defaultHook: i.ReadFile,
+		},
+		TOCFilesFunc: FakeWorldTOCFilesFunc{
+			defaultHook: i.TOCFiles,
 		},
 		WriteFileFunc: FakeWorldWriteFileFunc{
 			defaultHook: i.WriteFile,
 		},
 	}
-}
-
-// FakeWorldGitGrepFilesFunc describes the behavior when the GitGrepFiles method
-// of the parent FakeWorld instance is invoked.
-type FakeWorldGitGrepFilesFunc struct {
-	defaultHook func(string, ...string) ([]string, error)
-	hooks       []func(string, ...string) ([]string, error)
-	history     []FakeWorldGitGrepFilesFuncCall
-	mutex       sync.Mutex
-}
-
-// GitGrepFiles delegates to the next hook function in the queue
-// and stores the parameter and result values of this invocation.
-func (m *FakeWorld) GitGrepFiles(v0 string, v1 ...string) ([]string, error) {
-	r0, r1 := m.GitGrepFilesFunc.nextHook()(v0, v1...)
-	m.GitGrepFilesFunc.appendCall(FakeWorldGitGrepFilesFuncCall{v0, v1, r0, r1})
-	return r0, r1
-}
-
-// SetDefaultHook sets function that is called when the GitGrepFiles method
-// of the parent FakeWorld instance is invoked and the hook queue is empty.
-func (f *FakeWorldGitGrepFilesFunc) SetDefaultHook(hook func(string, ...string) ([]string, error)) {
-	f.defaultHook = hook
-}
-
-// PushHook adds a function to the end of hook queue.
-// Each invocation of the GitGrepFiles method of the parent FakeWorld instance
-// invokes the hook at the front of the queue and discards it.
-// After the queue is empty, the default hook function is invoked for any future action.
-func (f *FakeWorldGitGrepFilesFunc) PushHook(hook func(string, ...string) ([]string, error)) {
-	f.mutex.Lock()
-	f.hooks = append(f.hooks, hook)
-	f.mutex.Unlock()
-}
-
-// SetDefaultReturn calls SetDefaultHook with a function that returns the given values.
-func (f *FakeWorldGitGrepFilesFunc) SetDefaultReturn(r0 []string, r1 error) {
-	f.SetDefaultHook(func(string, ...string) ([]string, error) {
-		return r0, r1
-	})
-}
-
-// PushReturn calls PushHook with a function that returns the given values.
-func (f *FakeWorldGitGrepFilesFunc) PushReturn(r0 []string, r1 error) {
-	f.PushHook(func(string, ...string) ([]string, error) {
-		return r0, r1
-	})
-}
-
-func (f *FakeWorldGitGrepFilesFunc) nextHook() func(string, ...string) ([]string, error) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	if len(f.hooks) == 0 {
-		if f.defaultHook == nil {
-			panic("unexpected invocation of FakeWorld.GitGrepFiles")
-		}
-		return f.defaultHook
-	}
-
-	hook := f.hooks[0]
-	f.hooks = f.hooks[1:]
-	return hook
-}
-
-func (f *FakeWorldGitGrepFilesFunc) appendCall(r0 FakeWorldGitGrepFilesFuncCall) {
-	f.mutex.Lock()
-	f.history = append(f.history, r0)
-	f.mutex.Unlock()
-}
-
-// History returns a sequence of FakeWorldGitGrepFilesFuncCall objects
-// describing the invocations of this function.
-func (f *FakeWorldGitGrepFilesFunc) History() []FakeWorldGitGrepFilesFuncCall {
-	f.mutex.Lock()
-	history := make([]FakeWorldGitGrepFilesFuncCall, len(f.history))
-	copy(history, f.history)
-	f.mutex.Unlock()
-
-	return history
-}
-
-// FakeWorldGitGrepFilesFuncCall is an object that describes an invocation
-// of method GitGrepFiles on an instance of FakeWorld.
-type FakeWorldGitGrepFilesFuncCall struct {
-	// Regexp is the value of the 1st argument
-	// passed to this method invocation.
-	Regexp string
-	// Pathspecs is a slice containing the values of the variadic arguments
-	// passed to this method invocation.
-	Pathspecs []string
-	// Strings is the value of the 1st result
-	// returned from this method invocation.
-	Strings []string
-	// Err is the value of the 2nd result
-	// returned from this method invocation.
-	Err error
-}
-
-// Args returns an interface slice containing the arguments of this invocation.
-// The variadic slice argument is flattened in this array such that
-// one positional argument and three variadic arguments
-// would result in a slice of four, not two.
-func (c FakeWorldGitGrepFilesFuncCall) Args() []any {
-	trailing := []any{}
-	for _, val := range c.Pathspecs {
-		trailing = append(trailing, val)
-	}
-
-	return append([]any{c.Regexp}, trailing...)
-}
-
-// Results returns an interface slice containing the results of this invocation.
-func (c FakeWorldGitGrepFilesFuncCall) Results() []any {
-	return []any{c.Strings, c.Err}
 }
 
 // FakeWorldReadFileFunc describes the behavior when the ReadFile method
@@ -263,6 +148,107 @@ func (c FakeWorldReadFileFuncCall) Args() []any {
 // Results returns an interface slice containing the results of this invocation.
 func (c FakeWorldReadFileFuncCall) Results() []any {
 	return []any{c.Bytes, c.Err}
+}
+
+// FakeWorldTOCFilesFunc describes the behavior when the TOCFiles method
+// of the parent FakeWorld instance is invoked.
+type FakeWorldTOCFilesFunc struct {
+	defaultHook func() ([]string, error)
+	hooks       []func() ([]string, error)
+	history     []FakeWorldTOCFilesFuncCall
+	mutex       sync.Mutex
+}
+
+// TOCFiles delegates to the next hook function in the queue
+// and stores the parameter and result values of this invocation.
+func (m *FakeWorld) TOCFiles() ([]string, error) {
+	r0, r1 := m.TOCFilesFunc.nextHook()()
+	m.TOCFilesFunc.appendCall(FakeWorldTOCFilesFuncCall{r0, r1})
+	return r0, r1
+}
+
+// SetDefaultHook sets function that is called when the TOCFiles method
+// of the parent FakeWorld instance is invoked and the hook queue is empty.
+func (f *FakeWorldTOCFilesFunc) SetDefaultHook(hook func() ([]string, error)) {
+	f.defaultHook = hook
+}
+
+// PushHook adds a function to the end of hook queue.
+// Each invocation of the TOCFiles method of the parent FakeWorld instance
+// invokes the hook at the front of the queue and discards it.
+// After the queue is empty, the default hook function is invoked for any future action.
+func (f *FakeWorldTOCFilesFunc) PushHook(hook func() ([]string, error)) {
+	f.mutex.Lock()
+	f.hooks = append(f.hooks, hook)
+	f.mutex.Unlock()
+}
+
+// SetDefaultReturn calls SetDefaultHook with a function that returns the given values.
+func (f *FakeWorldTOCFilesFunc) SetDefaultReturn(r0 []string, r1 error) {
+	f.SetDefaultHook(func() ([]string, error) {
+		return r0, r1
+	})
+}
+
+// PushReturn calls PushHook with a function that returns the given values.
+func (f *FakeWorldTOCFilesFunc) PushReturn(r0 []string, r1 error) {
+	f.PushHook(func() ([]string, error) {
+		return r0, r1
+	})
+}
+
+func (f *FakeWorldTOCFilesFunc) nextHook() func() ([]string, error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if len(f.hooks) == 0 {
+		if f.defaultHook == nil {
+			panic("unexpected invocation of FakeWorld.TOCFiles")
+		}
+		return f.defaultHook
+	}
+
+	hook := f.hooks[0]
+	f.hooks = f.hooks[1:]
+	return hook
+}
+
+func (f *FakeWorldTOCFilesFunc) appendCall(r0 FakeWorldTOCFilesFuncCall) {
+	f.mutex.Lock()
+	f.history = append(f.history, r0)
+	f.mutex.Unlock()
+}
+
+// History returns a sequence of FakeWorldTOCFilesFuncCall objects
+// describing the invocations of this function.
+func (f *FakeWorldTOCFilesFunc) History() []FakeWorldTOCFilesFuncCall {
+	f.mutex.Lock()
+	history := make([]FakeWorldTOCFilesFuncCall, len(f.history))
+	copy(history, f.history)
+	f.mutex.Unlock()
+
+	return history
+}
+
+// FakeWorldTOCFilesFuncCall is an object that describes an invocation
+// of method TOCFiles on an instance of FakeWorld.
+type FakeWorldTOCFilesFuncCall struct {
+	// Strings is the value of the 1st result
+	// returned from this method invocation.
+	Strings []string
+	// Err is the value of the 2nd result
+	// returned from this method invocation.
+	Err error
+}
+
+// Args returns an interface slice containing the arguments of this invocation.
+func (c FakeWorldTOCFilesFuncCall) Args() []any {
+	return []any{}
+}
+
+// Results returns an interface slice containing the results of this invocation.
+func (c FakeWorldTOCFilesFuncCall) Results() []any {
+	return []any{c.Strings, c.Err}
 }
 
 // FakeWorldWriteFileFunc describes the behavior when the WriteFile method

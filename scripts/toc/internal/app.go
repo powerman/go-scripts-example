@@ -32,9 +32,9 @@ func (a *app) Update(opts Options) error {
 	files := opts.Files
 	if len(files) == 0 {
 		var err error
-		files, err = a.world.GitGrepFiles("^<!-- "+MarkerStart+" -->$", "*.md")
+		files, err = a.world.TOCFiles()
 		if err != nil {
-			return fmt.Errorf("git grep: %w", err)
+			return fmt.Errorf("find files: %w", err)
 		}
 	}
 
@@ -58,7 +58,7 @@ func (a *app) updateFile(name string, opts Options) error {
 	start, ok := doc.Comment(MarkerStart)
 	switch {
 	case !ok && len(opts.Files) == 0:
-		return nil // Found by GitGrepFiles, but the marker isn't a comment (e.g., it's in code).
+		return nil // Found by TOCFiles, but the marker isn't a comment (e.g., it's in code).
 	case !ok:
 		return ErrNoMarker
 	}
