@@ -1,0 +1,2 @@
+windows	UNKNOWN STEP	2026-11-09T16:06:22.2201910Z Current runner version: '2.338.2'
+windows	UNKNOWN STEP	2026-11-09T16:09:41.0712345Z ##[error]Process completed with exit code 1.

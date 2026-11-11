@@ -192,6 +192,14 @@ raw_args = true
 run = '"${SCRIPTS_BIN:?}/test-qemu"'
 run_windows = '"%SCRIPTS_BIN%\test-qemu"'
 
+[tasks.wait-ci]
+description = 'Wait for CI runs of a pushed commit and show logs of failed jobs'
+depends = ['scripts:build']
+usage = 'mount run="mise run -q wait-ci --usage-spec"'
+raw_args = true
+run = '"${SCRIPTS_BIN:?}/wait-ci"'
+run_windows = '"%SCRIPTS_BIN%\wait-ci"'
+
 [tasks.check-drift]
 hide = true
 run = [

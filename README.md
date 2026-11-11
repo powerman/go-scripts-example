@@ -18,7 +18,8 @@ The scripts here are real tasks of this repository:
 by `toc --check` and [lint-links](scripts/lint-links/) on CI,
 on Linux, macOS and Windows,
 [test-qemu](scripts/test-qemu/) tests scripts in docker on platforms emulated by QEMU,
-and [outdated](scripts/outdated/) shows what `mise run bump` would upgrade.
+[outdated](scripts/outdated/) shows what `mise run bump` would upgrade,
+and [wait-ci](scripts/wait-ci/) waits for CI runs of a pushed commit.
 
 <!-- toc -->
 
@@ -90,8 +91,12 @@ so a Go script is as convenient to run as a shell script.
 
 - Two scripts which process files, [toc](scripts/toc/) and [lint-links](scripts/lint-links/),
   with code shared in [scripts/internal/markdown](scripts/internal/markdown/).
-- A script which orchestrates external commands, [test-qemu](scripts/test-qemu/):
+- A simple script which orchestrates external commands, [test-qemu](scripts/test-qemu/):
   it has little logic and a `World` which runs docker.
+- A hard script which orchestrates external commands, [wait-ci](scripts/wait-ci/):
+  it runs git and gh, polls runs of a commit until they are completed or a timeout expires,
+  and tracks changes of their statuses;
+  tests of the logic run in a bubble of `testing/synctest`, so they take no real time.
 - A script which filters output of external commands by pipes, [outdated](scripts/outdated/):
   it asks go and mise what `mise run bump` would upgrade, without changing anything.
 - A script which runs binaries of other scripts, [lint:docs](scripts/lint-docs/):
@@ -130,6 +135,7 @@ so a Go script is as convenient to run as a shell script.
     ├── lint-links/             Program without a task, run by lint-docs.
     ├── outdated/               Program of task outdated.
     ├── test-qemu/              Program of task test-qemu.
+    ├── wait-ci/                Program of task wait-ci.
     └── toc/                    Program of task toc.
         ├── main.go             Parses the CLI and runs it.
         └── internal/
@@ -156,6 +162,7 @@ mise run toc --help
 mise run toc --check README.md
 mise run lint:docs
 mise run test-qemu linux/arm/v7 linux/riscv64
+mise run wait-ci --timeout=30m
 ```
 
 Arguments are passed to the script as is, `--help` and invalid flags included.
@@ -453,8 +460,16 @@ the logic of a script is mostly decisions made on results of commands,
 and they can't be tested without a boundary between the logic and the OS.
 
 **Does the layout pay off for a script which mostly runs commands?**
-Yes, see [test-qemu](scripts/test-qemu/).
-Its logic is small, but it still makes decisions:
+Yes, see [wait-ci](scripts/wait-ci/).
+It runs only a few commands of git and gh,
+but in shell it would be a polling loop with time, timeouts and statuses of runs,
+which is hard to get right and to test.
+In Go the logic uses the real clock, and its tests run in a bubble of `testing/synctest`,
+where `time.Sleep` advances a fake clock at once.
+The Fake of `World` in [app_test.go](scripts/wait-ci/internal/app_test.go)
+has a timeline of runs read by this clock,
+so tests of polling and timeouts take no real time.
+Even [test-qemu](scripts/test-qemu/), whose logic is small, still makes decisions:
 which Go version to use, a volume or a directory for a cache,
 whether a platform failed its tests or can't run containers at all.
 `World` takes structured values (a `Container`) instead of command-line arguments,
