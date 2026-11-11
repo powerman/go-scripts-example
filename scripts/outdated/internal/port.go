@@ -21,9 +21,12 @@ type World interface {
 	// MiseTools returns tools of mise.toml which have a newer version
 	// allowed by their requested version.
 	// Tools of the global config of the user aren't included.
+	// A newer Go for scripts/go.mod shows up here as tool go,
+	// because bump takes the Go of mise, which respects minimum_release_age.
 	MiseTools() ([]Update, error)
 	// GoModules returns modules which provide packages to scripts or their tests
 	// and have a newer minor or patch version.
+	// Upgrades of other modules forced by requirements of these newer versions aren't included.
 	GoModules() ([]Update, error)
 }
 
