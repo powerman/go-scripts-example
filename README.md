@@ -476,6 +476,35 @@ This example shows one recommended way to write and test it.
 No, but a task runner with the features listed in [Why mise](#why-mise) is.
 Without such a runner the scripts still work, but slower and without completion.
 
+A project which can't use mise may list programs by `go get -tool ./<name>` in `scripts/`
+and run them from the root by `"$(go -C scripts tool -n <name>)" "$@"`
+in a recipe of any runner with a POSIX shell:
+`go tool -n` builds the program if needed and prints the path of the cached binary.
+The build is always fresh and a start takes about 70 ms, but there is no completion,
+and how to wire it into tasks depends on the tools of the project.
+
+**Why not `go tool`?**
+It works, and it's simpler:
+`go get -tool ./<name>` in `scripts/` lists a program in `scripts/go.mod`,
+and `go tool <name>` builds it into the Go build cache if needed and runs it.
+There is no build task and no `$SCRIPTS_BIN`, the same command works on Windows,
+a binary is never stale, and the exit status passes through, unlike with `go run`.
+But a task starts about 40 ms slower,
+a binary started by another binary or in a loop costs about 70 ms instead of a few,
+and from the root it needs an absolute `GOWORK` or the `go tool -n` form above.
+This example prefers speed.
+
+**How is it different from Mage?**
+[Mage](https://magefile.org/) is a make-like build tool:
+targets are exported Go functions,
+their arguments are positional values or `-name=value` flags of a few basic types,
+and shell completion covers names of targets but not their arguments.
+Here a script is an ordinary CLI which runs without any runner,
+while the runner installs Go, rebuilds the program on demand and completes its arguments.
+[goyek](https://github.com/goyek/goyek) is a library with the same goal as Mage, run by `go run`.
+Pick Mage if it can be the only task runner of the project,
+pick this if scripts are separate programs run by tasks of the project's own runner.
+
 **Is a separate Go module required?**
 No.
 `scripts/go.mod` keeps dependencies of scripts out of the project,
