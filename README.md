@@ -21,6 +21,33 @@ on Linux, macOS and Windows,
 [outdated](scripts/outdated/) shows what `mise run bump` would upgrade,
 and [wait-ci](scripts/wait-ci/) waits for CI runs of a pushed commit.
 
+The approach itself is only the task layer:
+Go programs live in a separate module in [scripts/](scripts/),
+root mise tasks build them on demand into `$SCRIPTS_BIN`,
+run the binaries directly
+and complete their flags and arguments by a usage spec printed by the program.
+A task of a script is a few lines of [mise.toml](mise.toml):
+
+```toml
+[tasks.toc]
+description = 'Update tables of contents in markdown files'
+depends = ['scripts:build']
+usage = 'mount run="mise run -q toc --usage-spec"'
+raw_args = true
+run = '"${SCRIPTS_BIN:?}/toc"'
+run_windows = '"%SCRIPTS_BIN%\toc"'
+```
+
+Everything about the Go code itself is outside the approach:
+its layout, [libraries](#libraries), code generators and linter config.
+This example shows one recommended way to write and test it.
+
+It isn't "Go instead of shell":
+Go is where a shell script goes when it needs a test,
+while linear shell scripts stay in shell.
+The verbosity of Go costs little when AI agents write the code,
+and the compiler, the linter and tests guard their changes.
+
 <!-- toc -->
 
 - [Why scripts in Go](#why-scripts-in-go)
@@ -33,16 +60,17 @@ and [wait-ci](scripts/wait-ci/) waits for CI runs of a pushed commit.
   - [Run a script](#run-a-script)
   - [Working directory of tasks](#working-directory-of-tasks)
   - [Develop scripts](#develop-scripts)
-- [How it works](#how-it-works)
+- [How it works: the task layer](#how-it-works-the-task-layer)
   - [Why mise](#why-mise)
   - [A separate Go module](#a-separate-go-module)
   - [Build on demand](#build-on-demand)
   - [Running binaries](#running-binaries)
   - [Completion](#completion)
+  - [Windows](#windows)
+- [Go code of this example](#go-code-of-this-example)
   - [Code of a script](#code-of-a-script)
   - [Tests: Fake for World, Mock for App](#tests-fake-for-world-mock-for-app)
   - [Libraries](#libraries)
-- [Windows](#windows)
 - [Add Go scripts to your project](#add-go-scripts-to-your-project)
   - [A project not in Go](#a-project-not-in-go)
   - [A project in Go](#a-project-in-go)
@@ -139,14 +167,12 @@ so a Go script is as convenient to run as a shell script.
     ├── test-qemu/              Program of task test-qemu.
     ├── wait-ci/                Program of task wait-ci.
     └── toc/                    Program of task toc.
-        ├── main.go             Parses the CLI and runs it.
+        ├── main.go             Boilerplate: runs the CLI.
         └── internal/
-            ├── port.go         App, World, errors and types.
-            ├── app.go          Logic: implements App using World.
-            ├── cmd.go          Kong CLI which calls App.
-            ├── wire.go         Creates App with real World.
-            ├── world.go        Real World: commands and files.
-            └── *_test.go       Tests, generated Mock and Fake.
+            ├── app.go          App: the logic, which uses World.
+            ├── world.go        RealWorld: adapters of commands and files.
+            ├── *_test.go       Tests, generated Fake of World and Mock of App.
+            └── …               Boilerplate: port.go, cmd.go, wire.go.
 ```
 
 ## Usage
@@ -211,7 +237,9 @@ mise run scripts:fix   # Apply automatic fixes of go fix and golangci-lint.
 mise run scripts:cover # Show test coverage of scripts.
 ```
 
-## How it works
+## How it works: the task layer
+
+This is the approach itself; the Go code of a script is up to you.
 
 ### Why mise
 
@@ -344,23 +372,50 @@ and a broken spec breaks completion of only this task.
 A test checks the spec by `kongusage.CheckSpec`,
 and `scripts:lint:usage` lints specs of all binaries.
 
+### Windows
+
+Go scripts work on Windows, but mise tasks around them need care:
+
+- mise runs inline scripts by `cmd /c` on Windows, which doesn't expand `$SCRIPTS_BIN`,
+  so a task which runs a binary has `run_windows = '"%SCRIPTS_BIN%\toc"'`.
+- Tasks needed to run scripts (`scripts:build`, `scripts:test`)
+  work in cmd too, with `run_windows` where they use sh:
+  `%SCRIPTS_BIN%` instead of `$SCRIPTS_BIN`, PowerShell instead of a loop.
+  Other tasks to develop scripts need POSIX sh (e.g. Git Bash).
+- Some tools of `mise.toml` may be unavailable on Windows,
+  so [CI](.github/workflows/test.yml) installs only tools of scripts
+  (`install_args` of `jdx/mise-action`)
+  and sets `MISE_AUTO_INSTALL=false`, so `mise run` doesn't try to install others.
+
+## Go code of this example
+
+This is one recommended way to write and test the Go code of a script.
+
 ### Code of a script
 
-A script follows a flat variant of hexagonal architecture,
-with layers kept in separate files:
+A script follows a flat variant of hexagonal architecture
+and has only two concepts:
 
-- [port.go](scripts/toc/internal/port.go) declares interfaces `App` (what the script does),
-  `World` (external commands and files the logic needs), errors and types.
-- [app.go](scripts/toc/internal/app.go) implements `App` using `World`.
+- **`App`** with the logic:
+  [app.go](scripts/toc/internal/app.go) implements it
+  using `World` (external commands and files the logic needs).
   It's the only place with logic, and it doesn't touch the OS.
-- [world.go](scripts/toc/internal/world.go) implements `World` by real commands:
+- **`RealWorld`** with adapters of the outside world:
+  [world.go](scripts/toc/internal/world.go) implements `World` by real commands and files,
   thin adapters without logic.
-- [wire.go](scripts/toc/internal/wire.go) creates `App` with real `World` and stdout.
+
+Everything else is mechanical boilerplate, the same in every script:
+the CLI, and the glue which lets tests replace either concept.
+
+- [port.go](scripts/toc/internal/port.go) declares interfaces `App` and `World`,
+  errors and types.
+- [wire.go](scripts/toc/internal/wire.go) creates `App` with `RealWorld` and stdout.
 - [cmd.go](scripts/toc/internal/cmd.go) is a Kong CLI which converts flags to a call of `App`.
   The Kong struct is the only spec of the CLI.
 - [main.go](scripts/toc/main.go) parses the CLI and runs it.
   `Run` returns errors, and `ctx.FatalIfErrorf` exits with the exit status of a failed command,
   so the status reaches mise.
+- The Fake of `World` and the Mock of `App` for tests are generated, see below.
 
 A single-file Go script without tests (shell rewritten line by line)
 gets neither clear code nor tests,
@@ -413,23 +468,6 @@ With bitfield/script:
 - a command which exits with status 1 when nothing is found (like `git grep`)
   needs a check of `ExitStatus()`, like `|| [ $? -eq 1 ]` in shell.
 
-## Windows
-
-Go scripts work on Windows, but mise tasks around them need care:
-
-- mise runs inline scripts by `cmd /c` on Windows, which doesn't expand `$SCRIPTS_BIN`,
-  so a task which runs a binary has `run_windows = '"%SCRIPTS_BIN%\toc"'`.
-- Tasks needed to run scripts (`scripts:build`, `scripts:test`)
-  work in cmd too, with `run_windows` where they use sh:
-  `%SCRIPTS_BIN%` instead of `$SCRIPTS_BIN`, PowerShell instead of a loop.
-  Other tasks to develop scripts need POSIX sh (e.g. Git Bash).
-- Some tools of `mise.toml` may be unavailable on Windows,
-  so [CI](.github/workflows/test.yml) installs only tools of scripts
-  (`install_args` of `jdx/mise-action`)
-  and sets `MISE_AUTO_INSTALL=false`, so `mise run` doesn't try to install others.
-- Git returns paths with `/`, while arguments may use `\`:
-  [lint-links](scripts/lint-links/internal/app.go) converts them by `filepath.ToSlash`.
-
 ## Add Go scripts to your project
 
 The approach is also described as [agent skills](https://github.com/powerman/skills):
@@ -463,14 +501,6 @@ The same, with a few differences:
   while `scripts:*` tasks are kept apart from them by their prefix.
 
 ## FAQ
-
-**What exactly is the approach here?**
-Only the task layer:
-root mise tasks which build Go CLIs on demand into `$SCRIPTS_BIN`,
-run them directly and complete their flags and arguments.
-Everything about the Go code itself is outside the approach:
-its structure, [libraries](#libraries), code generators and linter config.
-This example shows one recommended way to write and test it.
 
 **Is mise required?**
 No, but a task runner with the features listed in [Why mise](#why-mise) is.
@@ -529,12 +559,15 @@ and a variable, an `if` or a loop doesn't make a script complex.
 See [Where a script lives](#where-a-script-lives).
 
 **Why so many small files instead of one?**
-The layout serves one goal: the logic can be tested without external commands.
-The `port`/`app`/`world`/`wire`/`cmd`/`main` split
-is the simplest form of hexagonal architecture known to the author,
-and it makes the boundary between logic and the OS visible.
-Each of these files is small and trivial.
-Merging them is possible, but it doesn't make the code objectively better.
+The files hold only two concepts:
+`App` with the logic and `RealWorld` with adapters of the outside world.
+The rest is mechanical boilerplate, the same in every script,
+which lets tests replace either concept:
+the logic is tested with a Fake of `World`, and the CLI with a Mock of `App`.
+It's the simplest form of hexagonal architecture known to the author,
+and it makes the boundary between the logic and the OS visible.
+Merging the files is possible, but it removes none of the concepts,
+so it doesn't make the code simpler.
 A single `main.go` with tests of pure functions isn't a simpler alternative:
 the logic of a script is mostly decisions made on results of commands,
 and they can't be tested without a boundary between the logic and the OS.
@@ -578,8 +611,7 @@ A program is rebuilt only after a change of scripts, and Go builds fast.
 
 **Who maintains Go scripts in a team which doesn't write Go?**
 A team which doesn't know Go at all is unlikely to rewrite its scripts in Go.
-For others Go is easy to read, and AI agents write such scripts well:
-the layout is the same in every script,
-and the compiler, the linter and tests check each change.
+For others Go is easy to read, and AI agents write such scripts well,
+because the layout is the same in every script.
 The approach is also described as agent skills,
 see [Add Go scripts to your project](#add-go-scripts-to-your-project).
