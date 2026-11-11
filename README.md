@@ -109,8 +109,7 @@ so a Go script is as convenient to run as a shell script.
 - Scripts run on [CI](.github/workflows/test.yml) on Linux, macOS and Windows:
   by mise on Linux and Windows,
   and by Go alone on other native platforms and on Linux platforms emulated by QEMU.
-  On QEMU platforms they also run by task test-qemu,
-  which does the same as the shell step of CI, but can be run locally too.
+  Task test-qemu does the same as the QEMU job of CI, but locally.
 
 ## Layout
 

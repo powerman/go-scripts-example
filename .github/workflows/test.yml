@@ -132,45 +132,9 @@ jobs:
               "$SCRIPTS_BIN/lint-docs"
             '
 
-  # The same as qemu, but by task test-qemu, which can also be run locally.
-  qemu-task:
-    strategy:
-      matrix:
-        include:
-          - {arch: arm, v: v7}
-          - {arch: ppc64le}
-          - {arch: s390x}
-          - {arch: riscv64}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      MISE_AUTO_INSTALL: false # Do not install other tools of mise.toml on `mise run`.
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: jdx/mise-action@v5
-        with:
-          install_args: go
-      - run: git reset --hard # Work around https://github.com/jdx/mise/discussions/8270.
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-        with:
-          platforms: ${{ matrix.arch }}
-
-      - uses: powerman/.github/.github/actions/cache-go-and-tools@main
-        with:
-          key: qemu-task-${{ matrix.arch }}${{ matrix.v && format('-{0}', matrix.v) || '' }}
-
-      # Caches of Go in a container are host directories cached by the step above.
-      - run: >-
-          mise run test-qemu --go-cache ~/.cache/go-build --go-mod-cache ~/go/pkg/mod
-          linux/${{ matrix.arch }}${{ matrix.v && format('/{0}', matrix.v) || '' }}
-
   # Aggregate job for branch protection.
   test:
-    needs: [main, windows, native, qemu, qemu-task]
+    needs: [main, windows, native, qemu]
     runs-on: ubuntu-latest
     if: always()
     steps:
