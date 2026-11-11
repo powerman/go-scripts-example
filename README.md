@@ -355,7 +355,7 @@ Go scripts work on Windows, but mise tasks around them need care:
 
 - mise runs inline scripts by `cmd /c` on Windows, which doesn't expand `$SCRIPTS_BIN`,
   so a task which runs a binary has `run_windows = '"%SCRIPTS_BIN%\toc"'`.
-- Tasks needed to run scripts (`scripts:build`, `scripts:build:clean`, `scripts:test`)
+- Tasks needed to run scripts (`scripts:build`, `scripts:test`)
   work in cmd too, with `run_windows` where they use sh:
   `%SCRIPTS_BIN%` instead of `$SCRIPTS_BIN`, PowerShell instead of a loop.
   Other tasks to develop scripts need POSIX sh (e.g. Git Bash).

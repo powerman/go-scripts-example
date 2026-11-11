@@ -11,28 +11,22 @@ go mod tidy
 ['scripts:build']
 description = 'Build Go scripts into $SCRIPTS_BIN'
 hide = true
-depends = 'scripts:build:clean'
 dir = 'scripts'
 silent = 'stdout' # Hide "sources up-to-date, skipping", but keep build errors.
 sources = ['**/*']
 outputs = ['{{env.SCRIPTS_BIN}}/*']
-run = 'go build -ldflags="-s -w" -o "${SCRIPTS_BIN:?}/" ./...'
-run_windows = 'go build -ldflags="-s -w" -o "%SCRIPTS_BIN%/" ./...'
-
-['scripts:build:clean']
-description = 'Remove binaries of removed Go scripts from $SCRIPTS_BIN'
-hide = true
-quiet = true
 run = '''
 for f in "${SCRIPTS_BIN:?}"/*; do
-    [ -d "scripts/${f##*/}" ] || rm -f "$f"
+    [ -d "${f##*/}" ] || rm -f "$f"
 done
+go build -ldflags="-s -w" -o "${SCRIPTS_BIN:?}/" ./...
 '''
 run_windows = """
 powershell -NoProfile -Command "if (Test-Path $env:SCRIPTS_BIN) { \
     Get-ChildItem $env:SCRIPTS_BIN -File \
-    | Where-Object { -not (Test-Path -PathType Container scripts/$($_.BaseName)) } \
-    | Remove-Item }"\
+    | Where-Object { -not (Test-Path -PathType Container $_.BaseName) } \
+    | Remove-Item }" \
+&& go build -ldflags="-s -w" -o "%SCRIPTS_BIN%/" ./...\
 """
 
 ['scripts:generate']
