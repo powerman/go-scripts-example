@@ -1,4 +1,4 @@
-// Lint-docs checks markdown files by other scripts.
+// Lint-docs checks markdown files using other scripts.
 // It is an example of a mise task in Go which runs binaries of other Go scripts.
 package main
 

@@ -1,5 +1,6 @@
 // Outdated shows what `mise run bump` would upgrade.
-// It is an example of a mise task in Go which filters output of external commands by pipes.
+// It is an example of a mise task in Go
+// which filters the output of external commands through pipes.
 package main
 
 import (
