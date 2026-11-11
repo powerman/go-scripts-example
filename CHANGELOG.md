@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-11-11
+
+### 🚀 Added
+
+- Add outdated script to show what bump would upgrade by @powerman in [500cba5]
+- Add wait-ci script to wait for CI runs of a commit by @powerman in [42223a4]
+
+### ⚡ Performance
+
+- Strip symbols and DWARF from Go script binaries by @powerman in [041df38]
+- Remove binaries of removed Go scripts only when rebuilding by @powerman in [0994d04]
+
+### 📚 Documentation
+
+- Clarify MiseTools and GoModules scope in outdated World by @powerman in [19a5606]
+
+[0.4.0]: https://github.com/powerman/go-scripts-example/compare/v0.3.0..v0.4.0
+[041df38]: https://github.com/powerman/go-scripts-example/commit/041df385b2bba2157699829da525d87541a58d95
+[0994d04]: https://github.com/powerman/go-scripts-example/commit/0994d046235e32ec9d344b9d36ac09fa651445b6
+[500cba5]: https://github.com/powerman/go-scripts-example/commit/500cba5036daa079146538912839aed0235e349a
+[19a5606]: https://github.com/powerman/go-scripts-example/commit/19a5606df64efd1cc38c9ce1f2582ef0457deea7
+[42223a4]: https://github.com/powerman/go-scripts-example/commit/42223a424e1e3b034bb66138820e4072e0cdf0da
+
 ## [0.3.0] - 2026-11-10
 
 ### 🚀 Added
