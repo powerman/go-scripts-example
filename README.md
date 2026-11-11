@@ -77,9 +77,8 @@ only scripts which became too hard to write and test are rewritten.
 - Go gives clear code and real tests:
   external commands are hidden behind an interface, so a test runs without them.
 - Code shared by scripts is an ordinary Go package, not a sourced shell library.
-- One toolchain for all non-trivial scripts:
-  no test infrastructure for shell (bats, helpers),
-  and no second language with its own environment (venv, `package.json`).
+- One toolchain for all non-trivial scripts, with tests built in:
+  no test infrastructure for shell (bats, helpers).
 - Go is a good fit even for a project which isn't written in Go:
   it's easy to read for anybody, and mise installs it like any other tool.
 
@@ -101,6 +100,7 @@ so a Go script is as convenient to run as a shell script.
   it asks go and mise what `mise run bump` would upgrade, without changing anything.
 - A script which runs binaries of other scripts, [lint:docs](scripts/lint-docs/):
   it finds them by `$SCRIPTS_BIN`, like tasks do, without a nested `mise run`.
+  It's a demo of this only: in a real project such a linear script is an inline task in shell.
 - Scripts as mise tasks: a fast rebuild on demand, completion of flags and arguments,
   tasks to build, generate, format, lint, test and cover scripts.
 - A layout of a script which makes it testable:
@@ -240,15 +240,27 @@ run_windows = '"%SCRIPTS_BIN%\toc"'
 ```
 
 - `scripts:build` rebuilds binaries of all programs into `$SCRIPTS_BIN`
-  only when files of `scripts/` change (by `sources` and `outputs`),
-  so a start of a task takes a few milliseconds.
-  `go run` isn't used: its own check of changes takes much longer.
+  only when files of `scripts/` change (by `sources` and `outputs`).
+- A task runs the binary, not `go run`:
+  `go run` adds a line `exit status N` to the output of a failed program
+  and exits with status 1 whatever the status of the program was.
 - `raw_args = true` makes mise pass arguments as is instead of parsing them by the spec,
   so `--help` and invalid flags reach Kong.
   mise removes `--` after the task name,
   so an argument `--` needs `mise run toc -- -- …`.
 - A binary which only tasks and other binaries run has no task:
   a task is needed only to run a binary by hand.
+
+Ways to start a script differ in cost (on the author's machine, warm caches):
+
+- `mise run toc`: about 90 ms, mostly the start of mise and of two tasks
+  (`scripts:build` and `toc`);
+- a task with `go run` instead of the binary: about 130 ms, the slowest;
+- `go run` alone: about 70 ms, which adds up when a script is run in a loop;
+- the binary alone: a few milliseconds, but nothing builds and updates it.
+
+So a script is run by hand by its task,
+while inside a task (by another script or in a loop) it's run as the binary.
 
 ### Running binaries
 
@@ -268,7 +280,7 @@ so it works from any directory, and the path is written in one place.
   without a build: the task which started it has built all binaries.
 - A binary isn't run by a nested `mise run`:
   mise resolves tools and env for each task it runs,
-  so a nested `mise run` takes about 100 ms against about 3 ms of a direct start,
+  so a nested `mise run` takes about 90 ms against a few milliseconds of a direct start,
   and mise adds `ERROR task failed` to the output on any non-zero exit status.
 - `$SCRIPTS_BIN` isn't added to `PATH`:
   binaries have short common names and would shadow commands of the system
