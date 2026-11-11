@@ -1,0 +1,26 @@
+{
+  "node": {
+    "name": "node",
+    "requested": "24",
+    "current": "24.11.0",
+    "bump": null,
+    "latest": "24.12.1",
+    "release_url": "https://nodejs.org/en/blog/release/v24.12.1",
+    "source": {
+      "type": "mise.toml",
+      "path": "/project/mise.toml"
+    }
+  },
+  "usage": {
+    "name": "usage",
+    "requested": "latest",
+    "current": "7.1.5",
+    "bump": null,
+    "latest": "7.2.0",
+    "release_url": "https://github.com/jdx/usage/releases/tag/v7.2.0",
+    "source": {
+      "type": "mise.toml",
+      "path": "/project/mise.toml"
+    }
+  }
+}

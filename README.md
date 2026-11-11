@@ -17,7 +17,8 @@ The scripts here are real tasks of this repository:
 [lint:docs](scripts/lint-docs/) checks it and links in markdown files
 by `toc --check` and [lint-links](scripts/lint-links/) on CI,
 on Linux, macOS and Windows,
-and [test-qemu](scripts/test-qemu/) tests scripts in docker on platforms emulated by QEMU.
+[test-qemu](scripts/test-qemu/) tests scripts in docker on platforms emulated by QEMU,
+and [outdated](scripts/outdated/) shows what `mise run bump` would upgrade.
 
 <!-- toc -->
 
@@ -91,6 +92,8 @@ so a Go script is as convenient to run as a shell script.
   with code shared in [scripts/internal/markdown](scripts/internal/markdown/).
 - A script which orchestrates external commands, [test-qemu](scripts/test-qemu/):
   it has little logic and a `World` which runs docker.
+- A script which filters output of external commands by pipes, [outdated](scripts/outdated/):
+  it asks go and mise what `mise run bump` would upgrade, without changing anything.
 - A script which runs binaries of other scripts, [lint:docs](scripts/lint-docs/):
   it finds them by `$SCRIPTS_BIN`, like tasks do, without a nested `mise run`.
 - Scripts as mise tasks: a fast rebuild on demand, completion of flags and arguments,
@@ -101,10 +104,9 @@ so a Go script is as convenient to run as a shell script.
   a Mock of `App` for tests of the CLI.
 - [Kong](https://github.com/alecthomas/kong) for the CLI
   and [kongusage](https://github.com/powerman/kongusage) for its completion in mise.
-- [bitfield/script](https://github.com/bitfield/script) to run commands,
-  so an adapter looks almost like a shell command:
-  [toc](scripts/toc/internal/world.go), [lint-links](scripts/lint-links/internal/world.go),
-  [test-qemu](scripts/test-qemu/internal/world.go).
+- [bitfield/script](https://github.com/bitfield/script) for pipes with filters,
+  so an adapter looks almost like a shell pipeline:
+  [outdated](scripts/outdated/internal/world.go).
 - Scripts used by tasks of the project ([fmt and lint](mise.toml)) and run on CI.
 - Scripts run on [CI](.github/workflows/test.yml) on Linux, macOS and Windows:
   by mise on Linux and Windows,
@@ -126,6 +128,7 @@ so a Go script is as convenient to run as a shell script.
     │   └── markdown/           Code shared by scripts.
     ├── lint-docs/              Program of task lint:docs.
     ├── lint-links/             Program without a task, run by lint-docs.
+    ├── outdated/               Program of task outdated.
     ├── test-qemu/              Program of task test-qemu.
     └── toc/                    Program of task toc.
         ├── main.go             Parses the CLI and runs it.
@@ -336,6 +339,10 @@ with [kongusage](https://github.com/powerman/kongusage)
 and [bitfield/script](https://github.com/bitfield/script) are a matter of taste:
 they are the ones this example was worked out with.
 Any CLI library will do, if you find a way to print a usage spec for mise completion.
+
+A single command is run by `os/exec` ([toc](scripts/toc/internal/world.go)):
+bitfield/script would add a dependency and the pitfalls below without a gain there.
+It pays off for pipes with filters ([outdated](scripts/outdated/internal/world.go)).
 
 With bitfield/script:
 

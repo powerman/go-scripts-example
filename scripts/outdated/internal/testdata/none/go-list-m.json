@@ -1,0 +1,7 @@
+{
+	"Path": "example.com/scripts",
+	"Main": true,
+	"Dir": "/project/scripts",
+	"GoMod": "/project/scripts/go.mod",
+	"GoVersion": "1.27.3"
+}

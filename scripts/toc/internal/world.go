@@ -1,9 +1,11 @@
 package internal
 
 import (
+	"context"
+	"errors"
 	"os"
-
-	"github.com/bitfield/script"
+	"os/exec"
+	"strings"
 )
 
 // RealWorld implements [World] by real commands and files.
@@ -12,15 +14,19 @@ type RealWorld struct{}
 // TOCFiles implements [World].
 func (RealWorld) TOCFiles() ([]string, error) {
 	// core.quotePath=false prints non-ASCII paths as is.
-	p := script.NewPipe().WithStderr(os.Stderr).ExecCommand("git",
+	cmd := exec.CommandContext(context.Background(), "git",
 		"-c", "core.quotePath=false", "grep", "--untracked",
 		"--files-with-matches", "--extended-regexp", "-e", "^<!-- "+MarkerStart+" -->$",
 		"--", "*.md")
-	files, err := p.Slice()
-	if p.ExitStatus() == 1 { // Like `git grep … || [ $? -eq 1 ]` in shell: no files found.
-		return nil, nil
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err, ok := errors.AsType[*exec.ExitError](err); ok && err.ExitCode() == 1 { //nolint:noinlineerr // Converts err for the condition.
+		return nil, nil // Like `git grep … || [ $? -eq 1 ]` in shell: no files found.
 	}
-	return files, err
+	if err != nil {
+		return nil, err
+	}
+	return strings.FieldsFunc(string(out), func(r rune) bool { return r == '\n' }), nil
 }
 
 // ReadFile implements [World].

@@ -1,11 +1,11 @@
 package internal
 
 import (
+	"context"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
-
-	"github.com/bitfield/script"
 )
 
 // RealWorld implements [World] by real commands and files.
@@ -50,8 +50,8 @@ func (w RealWorld) RunContainer(c Container) error {
 	args = append(args, c.Image)
 	args = append(args, c.Cmd...)
 
-	_, err := script.NewPipe().WithStdout(w.Stdout).WithStderr(w.Stderr).
-		ExecCommand(w.Docker, args...).
-		Stdout()
-	return err
+	cmd := exec.CommandContext(context.Background(), w.Docker, args...) //nolint:gosec // Running docker is the purpose.
+	cmd.Stdout = w.Stdout
+	cmd.Stderr = w.Stderr
+	return cmd.Run()
 }

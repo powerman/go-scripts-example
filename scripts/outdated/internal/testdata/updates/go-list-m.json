@@ -1,0 +1,28 @@
+{
+	"Path": "github.com/alecthomas/kong",
+	"Version": "v1.17.0",
+	"Time": "2026-10-30T06:36:29Z",
+	"GoVersion": "1.20"
+}
+{
+	"Path": "example.com/a",
+	"Version": "v0.0.0-20260101000000-abcdefabcdef",
+	"Time": "2026-01-01T00:00:00Z",
+	"Update": {
+		"Path": "example.com/a",
+		"Version": "v0.1.0",
+		"Time": "2026-11-01T00:00:00Z"
+	},
+	"Indirect": true
+}
+{
+	"Path": "golang.org/x/mod",
+	"Version": "v0.42.0",
+	"Time": "2026-10-09T20:24:17Z",
+	"Update": {
+		"Path": "golang.org/x/mod",
+		"Version": "v0.43.0",
+		"Time": "2026-11-05T17:12:44Z"
+	},
+	"GoVersion": "1.26.0"
+}

@@ -167,6 +167,14 @@ description = 'Add commit hash to .cliffignore to exclude from CHANGELOG'
 usage = 'arg "<commit>" help="Git revision (e.g. HEAD or a1b2c4d)"'
 run = 'git rev-parse --verify "${usage_commit}" >> .cliffignore'
 
+[tasks.outdated]
+description = 'Show what bump would upgrade'
+depends = ['scripts:build']
+usage = 'mount run="mise run -q outdated --usage-spec"'
+raw_args = true
+run = '"${SCRIPTS_BIN:?}/outdated"'
+run_windows = '"%SCRIPTS_BIN%\outdated"'
+
 [tasks.toc]
 description = 'Update tables of contents in markdown files'
 depends = ['scripts:build']

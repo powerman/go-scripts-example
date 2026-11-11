@@ -1,10 +1,10 @@
 package internal
 
 import (
+	"context"
 	"io"
+	"os/exec"
 	"path/filepath"
-
-	"github.com/bitfield/script"
 )
 
 // RealWorld implements [World] by real commands.
@@ -19,8 +19,8 @@ func (w RealWorld) RunScript(name string, args ...string) error {
 	if w.ScriptsBin == "" { // A bare name would be looked up in PATH.
 		return ErrNoScriptsBin
 	}
-	_, err := script.NewPipe().WithStdout(w.Stdout).WithStderr(w.Stderr).
-		ExecCommand(filepath.Join(w.ScriptsBin, name), args...).
-		Stdout()
-	return err
+	cmd := exec.CommandContext(context.Background(), filepath.Join(w.ScriptsBin, name), args...) //nolint:gosec // Running a binary of a Go script is the purpose.
+	cmd.Stdout = w.Stdout
+	cmd.Stderr = w.Stderr
+	return cmd.Run()
 }

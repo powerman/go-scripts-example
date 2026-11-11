@@ -1,0 +1,7 @@
+
+golang.org/x/mod
+
+github.com/alecthomas/kong
+golang.org/x/mod
+
+example.com/a
