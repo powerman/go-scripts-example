@@ -29,7 +29,9 @@ and [wait-ci](scripts/wait-ci/) waits for CI runs of a pushed commit.
 - [What this example shows](#what-this-example-shows)
 - [Layout](#layout)
 - [Usage](#usage)
+  - [Requirements](#requirements)
   - [Run a script](#run-a-script)
+  - [Working directory of tasks](#working-directory-of-tasks)
   - [Develop scripts](#develop-scripts)
 - [How it works](#how-it-works)
   - [Why mise](#why-mise)
@@ -155,6 +157,13 @@ Install [mise](https://mise.jdx.dev/getting-started.html), then install tools:
 mise install
 ```
 
+### Requirements
+
+The task layer needs mise 2026.8.11 or newer:
+it's the first release which accepts `usage = 'mount run=…'` of a task,
+used to complete arguments by the spec printed by the program.
+With `lockfile = true`, as in [mise.toml](mise.toml), use 2026.10.19 or newer.
+
 ### Run a script
 
 ```sh
@@ -172,6 +181,25 @@ when [completion of mise](https://mise.jdx.dev/cli/completion.html) is enabled.
 Binaries of scripts are built into `.cache/scripts/`,
 but run them by tasks:
 a task rebuilds a binary before the run and completes its arguments.
+
+### Working directory of tasks
+
+mise runs a task in its `dir`, by default the root directory of the config,
+whatever the directory of the shell is.
+So paths in arguments are relative to the root,
+while Tab completes them relative to the directory of the shell:
+
+```sh
+cd scripts
+mise run toc --check ../README.md # Fails: toc looks for ../README.md outside the root.
+```
+
+kongusage lists the ways out
+in [Path completion](https://github.com/powerman/kongusage#path-completion):
+a program resolves paths relative to `MISE_ORIGINAL_CWD` when it's set,
+a task runs in the directory of the shell (`dir = '{{cwd}}'`),
+or tasks are run only from the root.
+Scripts of this example expect to be run from the root.
 
 ### Develop scripts
 
@@ -285,6 +313,17 @@ so it works from any directory, and the path is written in one place.
 - `$SCRIPTS_BIN` isn't added to `PATH`:
   binaries have short common names and would shadow commands of the system
   in tasks and in the shell activated by mise.
+
+A shell file task (e.g. `mise/tasks/check-release-docs`) runs a binary the same way,
+so a linear shell script can leave its hard part to a Go script:
+
+```sh
+#!/usr/bin/env bash
+#MISE description="Check links in documentation of a release"
+#MISE depends=["scripts:build"]
+set -euo pipefail
+"${SCRIPTS_BIN:?}/lint-links" README.md CHANGELOG.md
+```
 
 ### Completion
 
