@@ -16,8 +16,8 @@ dir = 'scripts'
 silent = 'stdout' # Hide "sources up-to-date, skipping", but keep build errors.
 sources = ['**/*']
 outputs = ['{{env.SCRIPTS_BIN}}/*']
-run = 'go build -o "${SCRIPTS_BIN:?}/" ./...'
-run_windows = 'go build -o "%SCRIPTS_BIN%/" ./...'
+run = 'go build -ldflags="-s -w" -o "${SCRIPTS_BIN:?}/" ./...'
+run_windows = 'go build -ldflags="-s -w" -o "%SCRIPTS_BIN%/" ./...'
 
 ['scripts:build:clean']
 description = 'Remove binaries of removed Go scripts from $SCRIPTS_BIN'
